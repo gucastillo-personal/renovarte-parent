@@ -1,0 +1,6 @@
+[submodule "renovarte-catalogo"]
+	path = renovarte-catalogo
+	url = https://github.com/gucastillo-personal/renovarte-catalogo.git
+[submodule "renovarte-pipeline"]
+	path = renovarte-pipeline
+	url = https://github.com/gucastillo-personal/renovarte-pipeline.git
