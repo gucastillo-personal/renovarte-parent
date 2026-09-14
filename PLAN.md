@@ -67,13 +67,18 @@ vez de escribirla en TS y migrarla después:
   precio_profesional, precio_abc, precio_catalogo` a un crudo gitignored;
   deriva `data/reference/laca_pdf_precios.csv` (público, sin
   `precio_profesional`).
-- Match contra `products.json`, decisión manual por producto (ABC / Catálogo
-  / actual) — la "página de revisión" (spec 0008 pt.3) deja de ser una
-  página Next.js interna; se resuelve como reporte CLI/HTML local generado
-  por el propio pipeline.
-- `data/reference/precio_pdf_decisiones.json` se aplica como overlay en
-  `transform`, antes del descuento de ofertas (mismo orden que el AC-5 de la
-  0008).
+- **Decisión final (post-implementación, distinta del diseño original de
+  la 0008): el precio del PDF es la fuente primaria y se aplica
+  automático, sin revisión manual por producto.** `transform` carga
+  `laca_pdf_precios.csv` directo y usa el precio ABC para todo código que
+  matchea; sin match (o sin ABC) sigue con costo+margen. Se cayó la
+  "página de revisión" (spec 0008 pt.3, HTML con selector ABC/Catálogo/
+  Actual) y la persistencia de decisión por producto — se construyeron
+  primero siguiendo la spec 0008 original y se sacaron después de
+  validar el flujo con datos reales; ver
+  `docs/flujo-precio-pdf.md` para el diagrama y el razonamiento.
+- El descuento de `data/offers.json` se aplica después, sobre el precio ya
+  resuelto (PDF o costo+margen) — mismo orden que el AC-5 de la 0008.
 
 Como esto vive enteramente en el repo nuevo, se cae la excepción de
 `constitution.md §III.11` en `renovarte-catalogo` — ese repo vuelve a ser
@@ -81,11 +86,19 @@ Como esto vive enteramente en el repo nuevo, se cae la excepción de
 
 ## Handoff automatizado (ingesta → catálogo)
 
-1. `pipeline publish`: genera `products.json`, hace checkout de
-   `renovarte-catalogo`, commitea en una rama y abre PR.
-2. GitHub Action en `renovarte-pipeline` con `schedule` (cron) +
-   `workflow_dispatch` manual — es lo que la spec `0010` (placeholder, ya
-   prevista en `renovarte-catalogo`) pedía, corriendo en el repo correcto.
+**Decisión final (post-implementación): `ingest`/`transform`/`pdf-extract`
+son siempre manuales, corridos por el admin.** La GitHub Action no genera
+datos — solo toma el `public/data/products.json` que el admin ya generó y
+commiteó en `renovarte-pipeline`, y lo publica. Menos superficie en CI
+(sin secrets de Serlaca ahí), y el admin ve el diff de precios antes de
+que exista cualquier PR.
+
+1. `pipeline publish`: toma el `products.json` ya commiteado, hace checkout
+   de `renovarte-catalogo`, commitea en una rama y abre PR.
+2. GitHub Action en `renovarte-pipeline` con `schedule` (cron, no-op si no
+   hay nada nuevo commiteado) + `workflow_dispatch` manual — corre
+   únicamente `publish`. Es lo que la spec `0010` (placeholder, ya prevista
+   en `renovarte-catalogo`) pedía, en el repo correcto y acotado a publicar.
 3. Credencial: PAT de vida corta o GitHub App **scoped solo a
    `renovarte-catalogo`**, guardado como secret en `renovarte-pipeline` —
    nunca push directo a `main`, siempre PR (coherente con el principio de la
@@ -116,8 +129,8 @@ Como esto vive enteramente en el repo nuevo, se cae la excepción de
    resultante — tiene que salir idéntico. Sin esto no se da por migrado.
 
 **Fase 2 — PDF (spec 0008), nuevo**
-7. `pdf_laca.py` + matching + reporte de revisión + persistencia de
-   decisiones + overlay en transform.
+7. `pdf_laca.py` (extracción) + `load_pdf_prices()` + overlay automático
+   en `transform` (sin revisión manual — ver nota arriba).
 
 **Fase 3 — Automatización**
 8. `pipeline publish` + GitHub Action (cron/manual) + leak-check en origen.
