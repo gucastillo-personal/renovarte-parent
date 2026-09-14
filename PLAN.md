@@ -1,7 +1,7 @@
 # Plan de reorganización — RenovArte (parent + submodules)
 
-**Estado:** aprobado, en ejecución.
-**Fecha:** 2026-09-13.
+**Estado:** ✅ completo — las 5 fases hechas y en producción.
+**Fecha:** 2026-09-13. **Cerrado:** 2026-09-14.
 
 ## Objetivo
 
@@ -135,20 +135,45 @@ que exista cualquier PR.
 **Fase 3 — Automatización**
 8. `pipeline publish` + GitHub Action (cron/manual) + leak-check en origen.
 
-**Fase 4 — Baja de código viejo en `renovarte-catalogo`**
-9. Borrar `scripts/ingest.ts`, `scripts/transform.ts`, `scripts/lib/**`,
-   `data/raw/`, `data/input/`, `data/offers.json`, deps (`csv-parse`,
-   `dotenv`, `tsx` si quedan sin uso), sus specs de Vitest.
-10. Actualizar `constitution.md` (sacar la excepción §III.11 y las
-    invariantes de ingesta que ya no aplican ahí), `RFC-0001`, PRD,
-    `specs/README.md` (marcar 0002/0008/0009/0010 como "migradas a
-    renovarte-pipeline").
+**Fase 4 — Baja de código viejo en `renovarte-catalogo`** ✅ (2026-09-14)
+9. ✅ Borrados `scripts/ingest.ts`, `scripts/transform.ts`, `scripts/lib/**`
+   (9 archivos + 5 tests), `data/offers.json`, `data/input/`, `data/raw/`,
+   `.env.example`, deps (`csv-parse`, `dotenv`, `tsx`). `docs/serlaca-api.md`
+   se movió (no se borró) a `renovarte-pipeline/docs/`.
+10. ✅ Actualizados `constitution.md` (cae la excepción §III.11 — nunca se
+    construyó acá; invariantes de la sección I reescritas para el rol de
+    solo-recepción), `RFC-0001` (nota de vigencia, resto queda como
+    contexto histórico), `specs/README.md` (0002/0008/0009/0010 marcadas
+    como migradas).
 
-**Fase 5 — Validación end-to-end**
-11. `pnpm gate` completo en `renovarte-catalogo` con un `products.json`
-    generado por el PR real.
-12. Corrida real: ingest → PR → review → merge → deploy en Vercel, confirmar
-    que el catálogo se ve igual.
+**Fase 5 — Validación end-to-end** ✅ (2026-09-14)
+11. ✅ `pnpm gate` completo en `renovarte-catalogo` (lint, build de 416
+    páginas, typecheck, 51 unit tests, check:leak, 16 e2e) con el
+    `products.json` real generado por los PR de `renovarte-pipeline`
+    (incluido el fix del piso de margen — ver más abajo).
+12. ✅ Corrida real: `ingest` (434 crudos) → `transform` (384 finales, 159
+    con precio del PDF) → PR → review → merge → `main` de
+    `renovarte-catalogo` actualizado.
+
+## Hallazgos post-implementación (corridas reales, 2026-09-14)
+
+Dos problemas reales que solo aparecieron probando con datos/credenciales
+reales, no con fixtures — quedan documentados porque cambiaron diseño ya
+"cerrado":
+
+1. **Piso de margen para el precio del PDF.** En ~1 de cada 3 productos
+   reales, Precio ABC de LACA == Precio Profesional (el costo de
+   RenovArte) — usar ABC directo como `precio_venta` vendía a margen cero.
+   Fix: `precio_venta = max(precio_abc, costo * (1 + margen))`. El usuario
+   lo encontró revisando manualmente un producto (`017060004`) antes de
+   publicar — el chequeo humano del diff de precios importó acá.
+2. **`data/offers.json` nunca se migró de verdad.** El código para leerlo
+   en `renovarte-pipeline` se construyó en la Fase 1, pero el archivo con
+   la oferta real nunca se copió — un `transform` real corrió con
+   `offers={}` y la oferta activa desapareció del catálogo publicado
+   (mergeado) hasta que se detectó y corrigió con un PR de seguimiento.
+   Migrar *código* que lee un archivo no migra el *archivo* — hay que
+   verificarlo aparte.
 
 ## Decisiones tomadas
 
