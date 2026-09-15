@@ -26,6 +26,13 @@ that mode asks:
    plan must comply, not work around it), the `spec.md` you were given, and
    the existing RFC (`docs/rfc/0001-*.md` in `renovarte-catalogo`; may not
    exist yet in `renovarte-pipeline` — if so, this is the first RFC there).
+   If a `ux.md` also exists in the same `specs/NNNN-slug/` folder, read it
+   too — it resolves interaction/layout decisions the spec deliberately
+   left to UX, and your plan must match it, not re-decide it. If `ux.md`
+   has a `**Mockup:**` link, open it (or ask the orchestrator to relay a
+   summary if you can't browse it) and build to match what it actually
+   does, not just the prose description — the mockup is the more precise
+   spec of the two whenever they'd otherwise be read as ambiguous.
 2. **RFC**: if the spec changes architecture, schema, or a cross-cutting
    invariant, write the change as a dated amendment section in the existing
    RFC (do not fork a second architecture doc) or, for a genuinely new
