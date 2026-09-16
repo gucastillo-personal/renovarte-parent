@@ -4,3 +4,6 @@
 [submodule "renovarte-pipeline"]
 	path = renovarte-pipeline
 	url = https://github.com/gucastillo-personal/renovarte-pipeline.git
+[submodule "renovarte-events"]
+	path = renovarte-events
+	url = https://github.com/gucastillo-personal/renovarte-events.git

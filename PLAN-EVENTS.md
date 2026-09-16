@@ -1,0 +1,81 @@
+# Plan — POC event-driven: notificación de cambios de precio
+
+**Estado:** 🚧 en progreso.
+**Fecha inicio:** 2026-09-16.
+
+## Objetivo
+
+Sumar al proyecto una prueba de concepto de arquitectura event-driven, con
+costo real $0, para aprender arquitectura backend, AWS y Node.js — no es una
+necesidad de negocio urgente, es un ejercicio de aprendizaje que además deja
+algo útil funcionando: cuando `renovarte-pipeline` detecta cambios de precio
+en el catálogo, se publica un evento por AWS (SNS → SQS → Lambda) y llega
+una notificación a Discord resumiendo los cambios.
+
+Plan completo (contexto, diseño, contratos de datos, infra Terraform) en
+`/Users/gucastillo/.claude/plans/necesitamos-sumar-al-proyecto-wild-bonbon.md`.
+Este archivo es el checklist de avance — se va tildando a medida que se
+completa cada paso, y cada `git commit`/`git push`/instalación/`terraform
+apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
+
+## Decisiones tomadas
+
+- **Broker:** AWS — SNS (pub/sub) + SQS (cola durable + DLQ) + Lambda
+  (consumidor), dentro del "Always Free tier" permanente de AWS.
+- **Lenguajes:** pipeline sigue en Python (ya existente); consumidor nuevo
+  en **Node.js** (aprendizaje).
+- **Caso de uso:** detectar altas/bajas/subas/bajas de precio entre
+  corridas de `products.json`, publicar un evento resumen, notificar a
+  Discord vía webhook.
+- **IaC:** Terraform.
+- **Ubicación:** repo/submódulo nuevo y separado `renovarte-events` (no se
+  mete AWS/Node dentro de `renovarte-pipeline`).
+- **Diseño clave:** `renovarte-pipeline` se mantiene 100% libre de AWS/boto3
+  — solo calcula el diff y escribe `data/price-changes.json` (contrato de
+  datos neutro, sin dependencias nuevas). Todo lo de AWS vive en
+  `renovarte-events/producer`, invocado como paso best-effort (no
+  bloqueante) desde `publish.yml`.
+
+## Fases de ejecución
+
+**Fase 0 — Setup de repo e infra base**
+- [x] Armar esqueleto del repo (`CLAUDE.md`, `README.md`, `docs/`, carpetas `producer/`, `consumer/`, `infra/`, `.github/workflows/ci.yml`) — hecho en local, todavía sin convertir en repo git.
+- [ ] Confirmar cuenta AWS + credenciales IAM locales del usuario.
+- [ ] Crear repo `gucastillo-personal/renovarte-events` en GitHub.
+- [ ] `git submodule add` de `renovarte-events` en `renovarte-parent` + commit de `.gitmodules`.
+
+**Fase 1 — Producer (Python) y contrato de datos**
+- [x] `producer/src/producer/models.py` + `sns_client.py` + `cli.py`.
+- [x] Tests del producer — 9 tests, con un stub inyectado en `sns_client._sns_client` (en vez de mockear `boto3.client` directo, para no chocar con `mypy --strict`'s `no_implicit_reexport`). `ruff check`, `pytest` y `mypy` en verde.
+- [x] `docs/evento-price-changes.md` con el contrato (`price-changes.json` y el mensaje SNS/SQS).
+
+**Fase 2 — Consumer (Node.js Lambda)**
+- [x] `consumer/src/handler.mjs` + `discord.mjs` (cero dependencias npm).
+- [x] Tests del consumer — 6 tests con `node:test` (`t.mock.method` sobre `fetch`, auto-restaurado por test). `npm test` verde.
+
+**Fase 3 — Infra Terraform**
+- [x] `infra/*.tf` escrito (SNS, SQS + DLQ, IAM least-privilege, Lambda + event source mapping, outputs) — todavía sin `terraform validate`/`plan` reales porque Terraform no está instalado localmente.
+- [ ] Instalar Terraform CLI (aprobación).
+- [ ] `terraform fmt` / `validate` / `plan` (solo lectura) verificados.
+- [ ] Crear IAM user del producer (permiso único `sns:Publish`) + access key (manual, fuera de Terraform).
+- [ ] `terraform init` (aprobación) + `terraform apply` (aprobación) — recursos reales creados.
+
+**Fase 4 — Cambio en `renovarte-pipeline`**
+- [ ] `src/pipeline/publish/price_diff.py` (diff producto por producto, sin dependencias nuevas).
+- [ ] Invocación best-effort en `run_publish` (`src/pipeline/publish/run.py`), antes de `prepare_branch`.
+- [ ] Tests nuevos (`tests/test_price_diff.py` + extensión de `tests/test_publish_run.py`).
+- [ ] `data/price-changes.json` a `.gitignore`.
+
+**Fase 5 — Integración CI (`publish.yml`)**
+- [ ] Pasos nuevos best-effort (`continue-on-error: true`) en `.github/workflows/publish.yml`: checkout de `renovarte-events`, instalar `uv`, correr el producer.
+- [ ] Cargar secrets/vars nuevos en `renovarte-pipeline` (`RENOVARTE_EVENTS_AWS_ACCESS_KEY_ID/SECRET`, `RENOVARTE_EVENTS_SNS_TOPIC_ARN`) — aprobación por cada uno.
+
+**Fase 6 — Verificación end-to-end**
+- [ ] Producer local contra fixture de prueba → evento visible en CloudWatch Logs de la Lambda.
+- [ ] Notificación real recibida en canal de Discord de prueba.
+- [ ] Camino de la DLQ probado (webhook inválido temporal → mensaje cae en la DLQ tras 5 intentos) y revertido.
+- [ ] `workflow_dispatch` manual de `publish.yml` con un cambio de precio chico real: confirmar que el PR de siempre a `renovarte-catalogo` sigue abriéndose igual, y que además llega la notificación a Discord.
+
+## Notas de avance
+
+_(agregar acá hallazgos o decisiones que cambien el diseño ya "cerrado", igual que se hizo en `PLAN.md` de la migración original)_
