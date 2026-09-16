@@ -62,15 +62,17 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 - [ ] Crear IAM user del producer (permiso único `sns:Publish`) + access key (manual, fuera de Terraform).
 - [ ] `terraform apply` (aprobación) — recursos reales creados.
 
-**Fase 4 — Cambio en `renovarte-pipeline`**
-- [ ] `src/pipeline/publish/price_diff.py` (diff producto por producto, sin dependencias nuevas).
-- [ ] Invocación best-effort en `run_publish` (`src/pipeline/publish/run.py`), antes de `prepare_branch`.
-- [ ] Tests nuevos (`tests/test_price_diff.py` + extensión de `tests/test_publish_run.py`).
-- [ ] `data/price-changes.json` a `.gitignore`.
+**Fase 4 — Cambio en `renovarte-pipeline`** (rama `feature/price-change-events`)
+- [x] `src/pipeline/publish/price_diff.py` (diff producto por producto, sin dependencias nuevas).
+- [x] Invocación best-effort en `run_publish` (`src/pipeline/publish/run.py`), antes de `prepare_branch`.
+- [x] Tests nuevos (`tests/test_price_diff.py` + 2 tests nuevos en `tests/test_publish_run.py` — uno prueba que el archivo se escribe bien, otro que una falla ahí no bloquea el publish real).
+- [x] `data/price-changes.json` a `.gitignore`.
+- [x] `make check` (ruff + mypy + pytest) en verde — 122 tests, sin dependencias nuevas en `pyproject.toml`.
+- [x] Commit + push de la rama + PR abierto (sin mergear) — https://github.com/gucastillo-personal/renovarte-pipeline/pull/3, CI en verde.
 
-**Fase 5 — Integración CI (`publish.yml`)**
-- [ ] Pasos nuevos best-effort (`continue-on-error: true`) en `.github/workflows/publish.yml`: checkout de `renovarte-events`, instalar `uv`, correr el producer.
-- [ ] Cargar secrets/vars nuevos en `renovarte-pipeline` (`RENOVARTE_EVENTS_AWS_ACCESS_KEY_ID/SECRET`, `RENOVARTE_EVENTS_SNS_TOPIC_ARN`) — aprobación por cada uno.
+**Fase 5 — Integración CI (`publish.yml`)** (mismo PR #3, mismo repo)
+- [x] Pasos nuevos best-effort (`continue-on-error: true` + `if: always()`) en `.github/workflows/publish.yml`: checkout de `renovarte-events`, instalar `uv`, correr el producer. CI en verde.
+- [ ] Cargar secrets/vars nuevos en `renovarte-pipeline` (`RENOVARTE_EVENTS_AWS_ACCESS_KEY_ID/SECRET`, `RENOVARTE_EVENTS_SNS_TOPIC_ARN`) — bloqueado hasta que exista la infra real (Fase 3).
 
 **Fase 6 — Verificación end-to-end**
 - [ ] Producer local contra fixture de prueba → evento visible en CloudWatch Logs de la Lambda.
