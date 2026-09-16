@@ -43,7 +43,7 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 - [x] Crear repo `gucastillo-personal/renovarte-events` en GitHub (público) — https://github.com/gucastillo-personal/renovarte-events
 - [x] `git submodule add` de `renovarte-events` en `renovarte-parent` + commit de `.gitmodules` (commit `6b5e3d3`, pusheado a `main`).
 - [x] CI del repo nuevo en verde (producer, consumer, terraform fmt/validate).
-- [ ] Confirmar cuenta AWS + credenciales IAM locales del usuario.
+- [x] Confirmar cuenta AWS (usuario ya tenía cuenta admin) + usuario IAM dedicado `renovarte-events-terraform` (least-privilege, scoped a recursos `renovarte-events-*`) para correr Terraform.
 
 **Fase 1 — Producer (Python) y contrato de datos**
 - [x] `producer/src/producer/models.py` + `sns_client.py` + `cli.py`.
@@ -58,9 +58,12 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 - [x] `infra/*.tf` escrito (SNS, SQS + DLQ, IAM least-privilege, Lambda + event source mapping, outputs).
 - [x] Instalar Terraform CLI (aprobación dada) — `brew tap hashicorp/tap && brew install hashicorp/tap/terraform` (1.16.2; el formula `terraform` se sacó de homebrew-core por la licencia de HashiCorp).
 - [x] `terraform fmt` / `terraform init -backend=false` / `terraform validate` — todo en verde.
-- [ ] Confirmar cuenta AWS + credenciales IAM locales del usuario (bloquea todo lo de abajo).
-- [ ] Crear IAM user del producer (permiso único `sns:Publish`) + access key (manual, fuera de Terraform).
-- [ ] `terraform apply` (aprobación) — recursos reales creados.
+- [x] `terraform apply` (aprobación dada) — **9 recursos creados en AWS** (SNS topic, 2 SQS, IAM role, Lambda, event source mapping). Outputs:
+  - `sns_topic_arn` = `arn:aws:sns:us-east-1:839670623501:renovarte-events-price-changes`
+  - `sqs_queue_url` = `https://sqs.us-east-1.amazonaws.com/839670623501/renovarte-events-price-changes`
+  - `sqs_dlq_url` = `https://sqs.us-east-1.amazonaws.com/839670623501/renovarte-events-price-changes-dlq`
+  - `lambda_function_name` = `renovarte-events-consumer`
+- [ ] Crear IAM user del **producer** (permiso único `sns:Publish`, distinto del usuario `renovarte-events-terraform` de arriba) + access key (manual, fuera de Terraform) — pendiente para Fase 5/6.
 
 **Fase 4 — Cambio en `renovarte-pipeline`** (rama `feature/price-change-events`)
 - [x] `src/pipeline/publish/price_diff.py` (diff producto por producto, sin dependencias nuevas).
@@ -82,4 +85,21 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 
 ## Notas de avance
 
-_(agregar acá hallazgos o decisiones que cambien el diseño ya "cerrado", igual que se hizo en `PLAN.md` de la migración original)_
+1. **Políticas inline de usuario IAM: límite de 2048 caracteres.** La policy
+   least-privilege inicial (una acción por línea) superó el límite al
+   pegarla como inline policy de usuario. Se resolvió usando comodines de
+   servicio (`sns:*`, `sqs:*`, `lambda:*`, `iam:*`) *dentro de cada statement
+   ya acotado por `Resource` ARN* — no pierde seguridad porque el `Resource`
+   sigue limitando a los recursos `renovarte-events-*`, solo compacta el JSON.
+2. **No todas las acciones de Lambda soportan permisos a nivel de recurso.**
+   `lambda:GetFunctionCodeSigningConfig`, `lambda:GetFunctionEventInvokeConfig`,
+   `lambda:GetFunctionUrlConfig` y todas las de `EventSourceMapping`
+   (`Create/Delete/Get/List/UpdateEventSourceMapping`) — además de
+   `lambda:ListTags` cuando el recurso es un event source mapping (tiene su
+   propio tipo de ARN, no el de la función) — exigen `Resource: "*"` en IAM;
+   no aceptan un ARN específico aunque el recurso ya exista. Terraform los
+   llama igual como parte de su refresh/plan interno.
+3. **Los cambios de policy IAM pueden tardar en propagar.** Un intento de
+   `terraform apply` falló con el JSON ya corregido y confirmado; el
+   reintento (sin cambiar nada) funcionó unos minutos después. Vale la pena
+   reintentar antes de asumir que la policy está mal.
