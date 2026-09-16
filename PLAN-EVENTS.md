@@ -39,10 +39,11 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 ## Fases de ejecución
 
 **Fase 0 — Setup de repo e infra base**
-- [x] Armar esqueleto del repo (`CLAUDE.md`, `README.md`, `docs/`, carpetas `producer/`, `consumer/`, `infra/`, `.github/workflows/ci.yml`) — hecho en local, todavía sin convertir en repo git.
+- [x] Armar esqueleto del repo (`CLAUDE.md`, `README.md`, `docs/`, carpetas `producer/`, `consumer/`, `infra/`, `.github/workflows/ci.yml`).
+- [x] Crear repo `gucastillo-personal/renovarte-events` en GitHub (público) — https://github.com/gucastillo-personal/renovarte-events
+- [x] `git submodule add` de `renovarte-events` en `renovarte-parent` + commit de `.gitmodules` (commit `6b5e3d3`, pusheado a `main`).
+- [x] CI del repo nuevo en verde (producer, consumer, terraform fmt/validate).
 - [ ] Confirmar cuenta AWS + credenciales IAM locales del usuario.
-- [ ] Crear repo `gucastillo-personal/renovarte-events` en GitHub.
-- [ ] `git submodule add` de `renovarte-events` en `renovarte-parent` + commit de `.gitmodules`.
 
 **Fase 1 — Producer (Python) y contrato de datos**
 - [x] `producer/src/producer/models.py` + `sns_client.py` + `cli.py`.
@@ -54,11 +55,12 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 - [x] Tests del consumer — 6 tests con `node:test` (`t.mock.method` sobre `fetch`, auto-restaurado por test). `npm test` verde.
 
 **Fase 3 — Infra Terraform**
-- [x] `infra/*.tf` escrito (SNS, SQS + DLQ, IAM least-privilege, Lambda + event source mapping, outputs) — todavía sin `terraform validate`/`plan` reales porque Terraform no está instalado localmente.
-- [ ] Instalar Terraform CLI (aprobación).
-- [ ] `terraform fmt` / `validate` / `plan` (solo lectura) verificados.
+- [x] `infra/*.tf` escrito (SNS, SQS + DLQ, IAM least-privilege, Lambda + event source mapping, outputs).
+- [x] Instalar Terraform CLI (aprobación dada) — `brew tap hashicorp/tap && brew install hashicorp/tap/terraform` (1.16.2; el formula `terraform` se sacó de homebrew-core por la licencia de HashiCorp).
+- [x] `terraform fmt` / `terraform init -backend=false` / `terraform validate` — todo en verde.
+- [ ] Confirmar cuenta AWS + credenciales IAM locales del usuario (bloquea todo lo de abajo).
 - [ ] Crear IAM user del producer (permiso único `sns:Publish`) + access key (manual, fuera de Terraform).
-- [ ] `terraform init` (aprobación) + `terraform apply` (aprobación) — recursos reales creados.
+- [ ] `terraform apply` (aprobación) — recursos reales creados.
 
 **Fase 4 — Cambio en `renovarte-pipeline`**
 - [ ] `src/pipeline/publish/price_diff.py` (diff producto por producto, sin dependencias nuevas).
