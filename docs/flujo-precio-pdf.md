@@ -39,7 +39,7 @@ flowchart TD
         COMMIT{{"Admin revisa el diff<br/>commitea y pushea a renovarte-pipeline"}}
     end
 
-    subgraph CI["renovarte-pipeline · GitHub Action (cron + disparo manual)"]
+    subgraph CI["renovarte-pipeline · GitHub Action (disparo manual)"]
         LEAK["leak_check()<br/>defensa en origen"]
         BRANCH["git: rama + commit<br/>sobre catalogo-checkout"]
         PR["abre/reusa PR<br/>github_api.py"]
@@ -70,10 +70,9 @@ flowchart TD
    `pdf-extract` nunca corren en CI. Esto saca `SERLACA_API_KEY` y el resto
    de la config de Serlaca de los secrets de GitHub (solo hace falta local,
    en `.env.local`); la Action solo necesita `CATALOGO_PAT`.
-2. **El cron semanal es un no-op la mayoría de las semanas** — si nadie
-   commiteó un `products.json` nuevo desde el último PR, `publish` detecta
-   "sin cambios" y no hace nada. Sirve como red de seguridad, no como
-   disparador principal.
+2. **`publish` es siempre disparo manual, sin cron** — corre después de que
+   el admin ya commiteó un `products.json` nuevo; si por algún motivo se
+   dispara sin nada nuevo, detecta "sin cambios" y no hace nada.
 3. **El precio del PDF se aplica antes del descuento de oferta** — si un
    producto matchea contra el PDF *y* está en `offers.json`, el descuento
    se calcula sobre el precio ABC, no sobre costo+margen.
