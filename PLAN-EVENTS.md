@@ -1,7 +1,7 @@
 # Plan — POC event-driven: notificación de cambios de precio
 
-**Estado:** 🚧 en progreso.
-**Fecha inicio:** 2026-09-16.
+**Estado:** ✅ completo — flujo end-to-end verificado en producción (CI real).
+**Fecha inicio:** 2026-09-16. **Verificado end-to-end:** 2026-09-16.
 
 ## Objetivo
 
@@ -63,7 +63,7 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
   - `sqs_queue_url` = `https://sqs.us-east-1.amazonaws.com/839670623501/renovarte-events-price-changes`
   - `sqs_dlq_url` = `https://sqs.us-east-1.amazonaws.com/839670623501/renovarte-events-price-changes-dlq`
   - `lambda_function_name` = `renovarte-events-consumer`
-- [ ] Crear IAM user del **producer** (permiso único `sns:Publish`, distinto del usuario `renovarte-events-terraform` de arriba) + access key (manual, fuera de Terraform) — pendiente para Fase 5/6.
+- [x] ~~Crear IAM user del producer + access key~~ — reemplazado por **OIDC**: AWS recomendó no usar access keys de larga duración. Se agregó `infra/oidc.tf` (proveedor OIDC de GitHub + rol `renovarte-events-github-actions-producer`, scoped a `sns:Publish` sobre el topic, asumible solo desde `repo:gucastillo-personal/renovarte-pipeline:*`). Aplicado sin errores.
 
 **Fase 4 — Cambio en `renovarte-pipeline`** (rama `feature/price-change-events`)
 - [x] `src/pipeline/publish/price_diff.py` (diff producto por producto, sin dependencias nuevas).
@@ -75,13 +75,14 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 
 **Fase 5 — Integración CI (`publish.yml`)** (mismo PR #3, mismo repo)
 - [x] Pasos nuevos best-effort (`continue-on-error: true` + `if: always()`) en `.github/workflows/publish.yml`: checkout de `renovarte-events`, instalar `uv`, correr el producer. CI en verde.
-- [ ] Cargar secrets/vars nuevos en `renovarte-pipeline` (`RENOVARTE_EVENTS_AWS_ACCESS_KEY_ID/SECRET`, `RENOVARTE_EVENTS_SNS_TOPIC_ARN`) — bloqueado hasta que exista la infra real (Fase 3).
+- [x] Autenticación vía **OIDC** (`aws-actions/configure-aws-credentials` + `role-to-assume`), sin access keys guardadas.
+- [x] Variables cargadas en `renovarte-pipeline` (no secrets — son ARNs): `RENOVARTE_EVENTS_GITHUB_ACTIONS_ROLE_ARN`, `RENOVARTE_EVENTS_SNS_TOPIC_ARN`.
 
 **Fase 6 — Verificación end-to-end**
-- [ ] Producer local contra fixture de prueba → evento visible en CloudWatch Logs de la Lambda.
-- [ ] Notificación real recibida en canal de Discord de prueba.
-- [ ] Camino de la DLQ probado (webhook inválido temporal → mensaje cae en la DLQ tras 5 intentos) y revertido.
-- [ ] `workflow_dispatch` manual de `publish.yml` con un cambio de precio chico real: confirmar que el PR de siempre a `renovarte-catalogo` sigue abriéndose igual, y que además llega la notificación a Discord.
+- [x] Producer local contra fixture de prueba → evento visible en CloudWatch Logs de la Lambda (invocación de 2.6s, sin errores).
+- [x] Notificación real recibida en canal de Discord de prueba. **Flujo completo confirmado: producer → SNS → SQS → Lambda → Discord.**
+- [x] `workflow_dispatch` manual de `publish.yml` (rama `feature/price-change-events`) con un cambio de precio real que ya estaba pendiente (oferta del 10%, `precio_venta` $27.120 → $24.408): (i) el PR de siempre a `renovarte-catalogo` se abrió normal — https://github.com/gucastillo-personal/renovarte-catalogo/pull/6 —, y (ii) llegó la notificación a Discord vía OIDC (sin access keys), corriendo en 18s.
+- [ ] *(opcional, no bloqueante)* Camino de la DLQ probado (webhook inválido temporal → mensaje cae en la DLQ tras 5 intentos) y revertido — el consumer ya está preparado para esto (`batchItemFailures`), solo falta ejercitarlo a mano si se quiere ver en acción.
 
 ## Notas de avance
 
@@ -103,3 +104,39 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
    `terraform apply` falló con el JSON ya corregido y confirmado; el
    reintento (sin cambiar nada) funcionó unos minutos después. Vale la pena
    reintentar antes de asumir que la policy está mal.
+4. **El claim `sub` de OIDC de GitHub puede incluir IDs inmutables.** La
+   trust policy inicial usaba el formato clásico
+   `repo:OWNER/REPO:ref:...`, pero esta cuenta de GitHub emite
+   `repo:OWNER@id/REPO@id:ref:...` (immutable IDs, pensado para que el
+   claim no se reutilice si un repo se renombra o transfiere). El síntoma
+   fue `sts:AssumeRoleWithWebIdentity: Not authorized` con una trust
+   policy aparentemente correcta — se diagnosticó agregando un paso
+   temporal en el workflow que decodifica el JWT (`ACTIONS_ID_TOKEN_REQUEST_URL`
+   + `ACTIONS_ID_TOKEN_REQUEST_TOKEN`) y lo imprime. Fix: la condición
+   `StringLike` del `sub` cubre ambos formatos
+   (`infra/oidc.tf`).
+5. **Access keys de larga duración → OIDC.** El plan original preveía un
+   IAM user del producer con una access key guardada como secret en
+   GitHub. Al crear ese usuario, la consola de AWS sugirió OIDC/IAM Roles
+   Anywhere como alternativa — se adoptó: `aws-actions/configure-aws-credentials`
+   asume un rol scoped a `sns:Publish`, sin ningún secret de AWS guardado
+   en `renovarte-pipeline` (solo 2 *variables* con ARNs, que no son
+   sensibles).
+
+## Cómo probar el flujo manualmente
+
+```bash
+cd renovarte-events/producer
+AWS_PROFILE=renovarte-events AWS_REGION=us-east-1 \
+  uv run renovarte-events-producer publish \
+    --input ../fixtures/example-price-changes.json \
+    --topic-arn arn:aws:sns:us-east-1:839670623501:renovarte-events-price-changes
+```
+Y en CI: `gh workflow run publish.yml --repo gucastillo-personal/renovarte-pipeline --ref <rama>`.
+
+## Qué queda pendiente (decisión humana, no técnica)
+
+- Mergear el PR #3 de `renovarte-pipeline` (diff de precios + wiring OIDC) — nunca automático, ver `CLAUDE.md`.
+- Revisar y mergear el PR #6 de `renovarte-catalogo` (el cambio de precio real que destapó esta verificación).
+- Opcional: probar el camino de la DLQ (Fase 6, ítem opcional).
+- Opcional: destruir la infra (`terraform destroy`, con aprobación) si en algún momento se quiere desarmar el POC.
