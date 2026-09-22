@@ -17,6 +17,7 @@ convención de spec-driven-development que ya usan `renovarte-catalogo` y
 
 ```
 specs/
+├── constitution.md          # invariantes no negociables cross-repo
 ├── README.md                # este archivo
 └── NNNN-slug/
     ├── spec.md               # WHAT & WHY — acceptance criteria (cita RF/RNF de cada PRD tocada)
@@ -32,8 +33,13 @@ solo se encarga de **mostrar** el chat; el transporte en vivo vive en un
 repo nuevo dedicado; la conexión al LLM/RAG vive en otro repo nuevo
 dedicado — cada proyecto, una responsabilidad.
 
+Invariantes no negociables (una responsabilidad por repo, $0 infra por
+defecto, repos nuevos siempre como submódulo con su propio `CLAUDE.md`,
+etc.) en [`constitution.md`](./constitution.md).
+
 ## Feature index
 
 | ID | Feature | Repos que toca | Status |
 |----|---------|-----------------|--------|
+| [0001](./0001-poc-event-driven-discord/PLAN-EVENTS.md) | POC event-driven: cambio de precio en `renovarte-pipeline` publica un evento por AWS (SNS → SQS → Lambda) y notifica a Discord — ejercicio de aprendizaje de arquitectura backend/AWS/Node.js, $0 infra (free tier permanente) | `renovarte-pipeline` (detecta el cambio, publica el evento) · `renovarte-events` (nuevo en su momento, producer + consumer + infra Terraform) | ✅ Completo — verificado end-to-end en CI real (2026-09-16). Predata la convención formal de `spec.md`/AC — es un plan/checklist, no una spec con acceptance criteria |
 | [0016](./0016-chat-recomendador-cremas/spec.md) | Chat conversacional embebido ("Colibrí"): tipo de piel + presupuesto → 3 combos de cremas reales (más barato/medio/premium, 2+ productos c/u); "más barato"/"medio" ≤ presupuesto, "premium" ≤ presupuesto × 1.20 | `renovarte-catalogo` (muestra el chat, RF-14/RNF-06..09 en su PRD) · `renovarte-chat-gateway` (nuevo, transporte WebSocket) · `renovarte-colibri-rag` (nuevo, conexión LLM/RAG) | Diseño completo (plan + 55 tareas entre los 3), sin divergencias abiertas — listo para Fase 4 (Implementación) |
