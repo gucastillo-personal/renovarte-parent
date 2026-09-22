@@ -7,3 +7,6 @@
 [submodule "renovarte-events"]
 	path = renovarte-events
 	url = https://github.com/gucastillo-personal/renovarte-events.git
+[submodule "renovarte-colibri-rag"]
+	path = renovarte-colibri-rag
+	url = https://github.com/gucastillo-personal/renovarte-colibri-rag.git
