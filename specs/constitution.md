@@ -7,8 +7,9 @@ crea un repo nuevo — se chequea contra este archivo, además de contra la
 in the PR description explaining why.
 
 Source of truth: [`PLAN.md`](../PLAN.md) (arquitectura de la separación
-catálogo/pipeline) y [`PLAN-EVENTS.md`](../PLAN-EVENTS.md) (precedente del
-primer repo nuevo, `renovarte-events`).
+catálogo/pipeline — RFC de arquitectura del root, se queda ahí) y
+[`0001-poc-event-driven-discord/PLAN-EVENTS.md`](./0001-poc-event-driven-discord/PLAN-EVENTS.md)
+(precedente del primer repo nuevo, `renovarte-events`).
 
 Este archivo no repite las invariantes propias de cada repo — ver
 [`renovarte-catalogo/specs/constitution.md`](https://github.com/gucastillo-personal/renovarte-catalogo/blob/main/specs/constitution.md)

@@ -1,7 +1,8 @@
 # Flujo: del cambio de precio a la notificación en Discord
 
 Diagrama en distintos niveles de detalle del POC event-driven descrito en
-[`PLAN-EVENTS.md`](../PLAN-EVENTS.md): desde que `renovarte-pipeline`
+[`PLAN-EVENTS.md`](../specs/0001-poc-event-driven-discord/PLAN-EVENTS.md):
+desde que `renovarte-pipeline`
 detecta un cambio de precio hasta que llega la notificación a Discord,
 pasando por AWS (SNS → SQS → Lambda). El contrato de datos completo está en
 [`renovarte-events/docs/evento-price-changes.md`](../renovarte-events/docs/evento-price-changes.md).
