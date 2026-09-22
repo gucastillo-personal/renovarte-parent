@@ -17,6 +17,7 @@ convención de spec-driven-development que ya usan `renovarte-catalogo` y
 
 ```
 specs/
+├── constitution.md          # invariantes no negociables cross-repo
 ├── README.md                # este archivo
 └── NNNN-slug/
     ├── spec.md               # WHAT & WHY — acceptance criteria (cita RF/RNF de cada PRD tocada)
@@ -31,6 +32,10 @@ Cada repo tocado declara, en su propia PRD, qué le toca exactamente a **él**
 solo se encarga de **mostrar** el chat; el transporte en vivo vive en un
 repo nuevo dedicado; la conexión al LLM/RAG vive en otro repo nuevo
 dedicado — cada proyecto, una responsabilidad.
+
+Invariantes no negociables (una responsabilidad por repo, $0 infra por
+defecto, repos nuevos siempre como submódulo con su propio `CLAUDE.md`,
+etc.) en [`constitution.md`](./constitution.md).
 
 ## Feature index
 
