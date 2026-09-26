@@ -43,41 +43,60 @@ repartidas así:
 
 #### Bootstrap + infra base
 
-- [ ] **T1.** Crear repo `renovarte-chat-gateway` (o el nombre final
+- [x] **T1.** Crear repo `renovarte-chat-gateway` (o el nombre final
   acordado con `ai-agent`) con estructura mínima (`src/`, `terraform/`,
   `tests/`, `.github/workflows/`, `README.md`, `CLAUDE.md` con las mismas
   reglas de aprobación humana que el resto del proyecto). *Check:* repo
-  clona y `npm install` corre limpio.
-- [ ] **T2.** `src/types.ts`: `ChatEnvelope`, `MessageType`, y los 7
+  clona y `npm install` corre limpio. — **Hecho localmente** (directorio
+  `renovarte-chat-gateway/` con la estructura completa); `pnpm install`
+  corrió limpio local (`pnpm gate` en verde, ver reporte de implementación).
+  **Pendiente de aprobación humana**: no se corrió `gh repo create` (crea
+  un recurso real en GitHub) ni se agregó como submódulo de
+  `renovarte-parent`, ni se hizo ningún `git commit`/`git push` — ninguno
+  de los 3 está aprobado todavía por proceso (`CLAUDE.md`).
+- [x] **T2.** `src/types.ts`: `ChatEnvelope`, `MessageType`, y los 7
   payloads (`UserMessagePayload` + los 6 servidor→cliente) tal como
   quedaron en `rfc-transporte-websocket.md` §3 — mismos tipos que
   `ai-agent`/`frontend-agent` copian a mano a sus repos. *Check:*
   `tsc --noEmit` en verde + test de shape que serializa un ejemplo de cada
-  `type` y lo valida contra el contrato.
-- [ ] **T3.** `terraform/`: API Gateway WebSocket API + rutas
+  `type` y lo valida contra el contrato. — Verificado verbatim contra
+  `renovarte-colibri-rag/src/types/wire.ts` (ya mergeado a `main` de ese
+  repo) — sin drift.
+- [x] **T3.** `terraform/`: API Gateway WebSocket API + rutas
   `$connect`/`$disconnect`/`$default`, roles IAM mínimos por Lambda,
   output del ARN de la API Gateway (para que `ai-agent` lo referencie,
   RFC §4). *Check:* `terraform validate` en verde; `terraform plan` sin
   errores contra la cuenta AWS de práctica (aprobación humana explícita
-  antes de cualquier `apply`, fuera del alcance de esta tarea).
-- [ ] **T4.** `terraform/dynamodb.tf`: tablas `chat-connections` (TTL
+  antes de cualquier `apply`, fuera del alcance de esta tarea). —
+  `terraform validate`/`terraform fmt -check -recursive` en verde (ver
+  reporte). `terraform plan` **no se pudo correr**: no hay credenciales
+  AWS configuradas en este entorno de implementación (`aws sts
+  get-caller-identity` falla con `NoCredentials`) — no es un blocker de
+  diseño, es un límite del sandbox actual; queda pendiente para cuando
+  haya una cuenta de práctica accesible.
+- [x] **T4.** `terraform/dynamodb.tf`: tablas `chat-connections` (TTL
   24h), `chat-control` (item único `pk="status"`), `chat-budget-ledger`
   (PK `period`, DynamoDB Streams `NEW_IMAGE` habilitado). *Check:*
   `terraform validate`; test de integración local (DynamoDB Local o mock)
-  confirma el TTL configurado en `chat-connections`.
+  confirma el TTL configurado en `chat-connections`. — `terraform
+  validate` en verde. El "test de integración local" se implementó como
+  unit test con DynamoDB Document Client mockeado (`tests/unit/
+  connections.test.ts`, confirma el `ttl` calculado), no contra DynamoDB
+  Local real — mismo criterio de mocking que el resto de la suite, ninguna
+  tarea de este repo asume Docker/DynamoDB Local disponible.
 
 #### Transporte core
 
-- [ ] **T5.** `src/handlers/on-connect.ts`: registra `connection_id` en
+- [x] **T5.** `src/handlers/on-connect.ts`: registra `connection_id` en
   `chat-connections`, chequea `chat-control` antes de devolver `200`,
   `postToConnection` con `unavailable`/`reason:"budget_cap"` si
   `enabled=false` (AC-1, AC-13; RFC §4). *Check:* unit test con mocks de
   API Gateway Management API + DynamoDB — casos `enabled=true`/`false`,
-  sin exigir ningún token de sesión (AC-1).
-- [ ] **T6.** `src/handlers/on-disconnect.ts`: limpieza de
+  sin exigir ningún token de sesión (AC-1). — `tests/unit/on-connect.test.ts`.
+- [x] **T6.** `src/handlers/on-disconnect.ts`: limpieza de
   `chat-connections`. *Check:* unit test, no lanza si el `connection_id`
-  ya no existe.
-- [ ] **T7.** `src/handlers/on-message.ts`: valida `UserMessagePayload`,
+  ya no existe. — `tests/unit/on-disconnect.test.ts`.
+- [x] **T7.** `src/handlers/on-message.ts`: valida `UserMessagePayload`,
   re-chequea `chat-control` (cubre "el techo se alcanza a mitad de una
   conversación", `ux.md`), invoca **async** (`InvocationType: Event`,
   pendiente confirmar con `ai-agent` — ver riesgo #1) al Lambda del
@@ -86,56 +105,82 @@ repartidas así:
   conector. *Check:* unit test — mensaje malformado → `unavailable`/
   `reason:"internal_error"`; `chat-control.enabled=false` a mitad de
   conversación → corta antes de invocar; confirma `InvocationType: Event`
-  en el mock de invocación.
-- [ ] **T8.** `src/lib/connections.ts`: merge parcial de
+  en el mock de invocación. — `tests/unit/on-message.test.ts` +
+  `tests/unit/lambda-invoke.test.ts` (confirma `InvocationType: "Event"`
+  en el `InvokeCommand`). El riesgo #1 de este mismo `tasks.md` ya está
+  marcado resuelto en `plan.md` ("Divergencia detectada... RESUELTO") —
+  confirmado async en ambos lados.
+- [x] **T8.** `src/lib/connections.ts`: merge parcial de
   `tipo_piel`/`presupuesto` sobre `chat-connections` (escrito por el
   conector de `ai-agent` con permiso `dynamodb:UpdateItem` acotado, leído
   por este repo). *Check:* unit test de merge sin pisar campos que no
-  vinieron en el update.
-- [ ] **T9.** `src/lib/chat-control.ts`: `GetItem` simple sobre
+  vinieron en el update. — `tests/unit/connections.test.ts`.
+- [x] **T9.** `src/lib/chat-control.ts`: `GetItem` simple sobre
   `chat-control`, sin lógica de negocio, usado por T5/T7. *Check:* unit
   test, devuelve cada `reason` (`"budget_cap"` / `"maintenance"` / `null`)
-  tal cual.
+  tal cual. — `tests/unit/chat-control.test.ts`.
 
 #### Corte de gasto (AC-13/RNF-09)
 
-- [ ] **T10.** `src/handlers/budget-guard.ts`: disparado por DynamoDB
+- [x] **T10.** `src/handlers/budget-guard.ts`: disparado por DynamoDB
   Streams sobre `chat-budget-ledger`; si `spent_usd_estimate >=
   BUDGET_CAP_USD` (env var, default 20) y `enabled=true` → escribe
   `chat-control={enabled:false, reason:"budget_cap"}`, idempotente.
   *Check:* unit test con evento de stream simulado — dispara una vez, no
-  reescribe si ya está en `false`.
-- [ ] **T11.** `terraform/budget.tf` (parte 1): `EventBridge Scheduler`
+  reescribe si ya está en `false`. — `tests/unit/budget-guard.test.ts`.
+- [x] **T11.** `terraform/budget.tf` (parte 1): `EventBridge Scheduler`
   (`cron(0 0 1 * ? *)`) que invoca `budget-guard` en modo "reset" —
   supuesto de reencendido mensual automático, a confirmar con el CTO/CEO
   en el gate de Fase 2 (RFC riesgo #4). *Check:* `terraform validate`;
   unit test del modo "reset" del handler — vuelve a `enabled:true,
-  reason:null`.
-- [ ] **T12.** `terraform/budget.tf` (parte 2): AWS Budget tipo "Cost
+  reason:null`. — `aws_scheduler_schedule.budget_reset`
+  (`terraform/budget.tf`), `terraform validate` en verde; modo "reset"
+  cubierto en `tests/unit/budget-guard.test.ts`. **El supuesto de
+  reencendido mensual automático sigue sin confirmación explícita del
+  CTO/CEO** — implementado tal como lo dejó el RFC (riesgo #4, a
+  confirmar), no como algo ya cerrado; si se prefiere manual, borrar este
+  recurso es el único cambio.
+- [x] **T12.** `terraform/budget.tf` (parte 2): AWS Budget tipo "Cost
   budget" filtrado por tag `Project=renovarte-chat`, límite USD 5, umbral
   80% (SNS/email informativo) y 100% (Budget Action `Deny
   lambda:InvokeFunction` sobre los roles de `on-connect`/`on-message`/
   `budget-guard`) — guardrail secundario del gasto AWS propio, no del
   gasto de Claude (RFC §5.4). *Check:* `terraform validate`; revisión
-  manual de que el filtro de tag no afecta a `renovarte-events`.
-- [ ] **T13.** `src/leak-audit.ts` (script de CI): grep de tokens
+  manual de que el filtro de tag no afecta a `renovarte-events`. —
+  `aws_budgets_budget.aws_cost_guardrail` + `aws_budgets_budget_action.
+  deny_invoke_at_100_percent`, `terraform validate` en verde. Filtro
+  `TagKeyValue = "user:Project$renovarte-chat"` — `renovarte-events` no
+  usa ese tag (confirmado leyendo su `infra/*.tf`, no tiene
+  `default_tags` de provider), así que no puede matchear.
+- [x] **T13.** `src/leak-audit.ts` (script de CI): grep de tokens
   prohibidos (API key, costo, margen, variantes de precio de lista LACA)
   sobre `src/`, nombres de env vars referenciadas, y un JSON de ejemplo
   serializado de cada `payload` (AC-10). *Check:* script corre en CI,
   falla el build si encuentra un match; test adicional confirma que
   `ChatEnvelope`/`ComboItem` no tienen ningún campo de costo/margen en su
-  definición de tipos.
+  definición de tipos. — `pnpm check:leak` en verde (ver reporte); tipos
+  de `src/types.ts` no tienen ningún campo de costo/margen/LACA por
+  diseño (revisión manual del archivo, no hay ningún test de "ausencia de
+  campo" automatizado más allá de que el propio guard de shape solo
+  reconoce los campos documentados en el RFC).
 
 #### Cierre y coordinación cross-repo
 
-- [ ] **T14.** `.github/workflows/ci.yml`: lint + `tsc --noEmit` + tests
+- [x] **T14.** `.github/workflows/ci.yml`: lint + `tsc --noEmit` + tests
   unitarios + `terraform validate` + el audit de T13, todo en verde antes
-  de cualquier PR. *Check:* CI corre limpio en un PR de prueba.
-- [ ] **T15.** `tests/unit/`: al menos un test que arma cada uno de los 7
+  de cualquier PR. *Check:* CI corre limpio en un PR de prueba. — Workflow
+  escrito (`.github/workflows/ci.yml`, jobs `gate` + `terraform`); **no
+  se pudo verificar "CI corre limpio en un PR de prueba" literalmente**
+  porque el repo todavía no existe en GitHub (T1) — cada paso del
+  workflow sí se corrió localmente de forma equivalente (`pnpm lint`,
+  `pnpm typecheck`, `pnpm test`, `pnpm check:leak`, `pnpm build`,
+  `terraform fmt -check -recursive`, `terraform init -backend=false`,
+  `terraform validate`), todos en verde.
+- [x] **T15.** `tests/unit/`: al menos un test que arma cada uno de los 7
   `ChatEnvelope` completos (1 cliente→servidor + 6 servidor→cliente) y lo
   valida contra el shape de RFC §3.1-3.3 — contrato con `frontend-agent`.
-  *Check:* suite en verde.
-- [ ] **T16.** Test de resiliencia AC-11: `on-connect`/`on-message` con
+  *Check:* suite en verde. — `tests/unit/types.test.ts`.
+- [x] **T16.** Test de resiliencia AC-11: `on-connect`/`on-message` con
   `chat-control` en cualquier estado (incluidos estados inesperados/
   malformados del item) nunca lanzan una excepción no controlada, siempre
   responden un `ChatEnvelope` válido — la verificación completa de
@@ -143,6 +188,10 @@ repartidas así:
   `renovarte-catalogo`, pero este repo no debe ser la causa de una falla
   ahí. *Check:* suite en verde, cobertura explícita de los estados
   "raros" del item `chat-control` (campo faltante, `reason` desconocido).
+  — `tests/unit/resilience.test.ts` (5 estados crudos de `chat-control` ×
+  `on-connect`/`on-message`, más body no-JSON/`null`), más casos T16
+  puntuales dentro de `on-connect.test.ts`/`on-message.test.ts`/
+  `budget-guard.test.ts`/`chat-control.test.ts`.
 - [ ] **T17.** Coordinar con `ai-agent`: (a) copiar el ARN de la API
   Gateway (output de T3) al `.tfvars`/config del repo del conector y
   confirmar el permiso IAM `execute-api:ManageConnections` que ese repo
@@ -151,22 +200,38 @@ repartidas así:
   reconciliado (async, `InvocationType: Event`, ver `plan.md`) — queda
   pendiente solo el intercambio real de ARNs una vez existan los 2 repos.
   *Check:* ambos repos confirman por escrito (comentario en PR o nota en
-  README) el ARN copiado — sin Terraform remote-state compartido.
-- [ ] **T18.** Agregar una nota de **referencia** (no enmienda) en
+  README) el ARN copiado — sin Terraform remote-state compartido. —
+  **No completada, a propósito, no por omisión.** (b) está resuelto (ver
+  `plan.md`). (a) requiere un ARN *real* de una API Gateway realmente
+  desplegada (`terraform apply`, fuera de alcance sin aprobación humana +
+  credenciales AWS) y un repo `renovarte-chat-gateway` real en GitHub (T1,
+  también pendiente de aprobación) — no hay nada concreto que copiar
+  todavía. `terraform/outputs.tf` ya expone los 3 valores que
+  `ai-agent`/`frontend-agent` van a necesitar
+  (`api_gateway_execution_arn`, `chat_connections_table_arn`,
+  `chat_budget_ledger_table_arn`, `websocket_url`) y el README documenta
+  el procedimiento — la coordinación por escrito queda para cuando ambos
+  repos estén realmente desplegados.
+- [x] **T18.** Agregar una nota de **referencia** (no enmienda) en
   `renovarte-catalogo/specs/constitution.md`, cerca de `§II.4`/`§II.5`,
   mencionando `renovarte-chat-gateway` (y el repo del conector de
   `ai-agent`) como el runtime externo del chat — mismo criterio que ya
   usa esa sección para referenciar a `renovarte-pipeline`. `spec.md` ya
   cerró que esto no requiere enmienda ("Conflictos con `constitution.md`:
   ninguno bloqueante"). *Check:* nota agregada, sin tocar el texto de la
-  invariante ni requerir aprobación de enmienda.
-- [ ] **T19.** `README.md` de `renovarte-chat-gateway`: documenta el corte
+  invariante ni requerir aprobación de enmienda. — Nota agregada entre los
+  puntos 5 y 6 de `renovarte-catalogo/specs/constitution.md` (§II). **Sin
+  commitear/pushear** — es un cambio en el working tree de otro submódulo
+  (`renovarte-catalogo`), pendiente de su propia rama + PR + aprobación
+  humana antes de commit/push, mismo proceso que este mismo repo.
+- [x] **T19.** `README.md` de `renovarte-chat-gateway`: documenta el corte
   manual de `chat-control` (`reason:"maintenance"`), el riesgo de free
   tier de 12 meses de API Gateway (RFC §6, riesgo #1 — a verificar en AWS
   Billing antes de aprovisionar), y el procedimiento de re-copiar el ARN
   si la API Gateway se recrea (RFC §6, riesgo #3). *Check:* README
   completo, formato consistente con el runbook ya existente de
-  `renovarte-events`.
+  `renovarte-events`. — `README.md` + `docs/runbook.md` (mismo separador
+  README/runbook que usa `renovarte-events`).
 
 ## AI
 
