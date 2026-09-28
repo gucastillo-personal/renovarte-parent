@@ -10,3 +10,6 @@
 [submodule "renovarte-colibri-rag"]
 	path = renovarte-colibri-rag
 	url = https://github.com/gucastillo-personal/renovarte-colibri-rag.git
+[submodule "renovarte-chat-gateway"]
+	path = renovarte-chat-gateway
+	url = https://github.com/gucastillo-personal/renovarte-chat-gateway.git
