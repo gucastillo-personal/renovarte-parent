@@ -464,58 +464,84 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
 
 #### Contrato y lógica pura
 
-- [ ] **T1.** `src/lib/chat/types.ts`: `ChatEnvelope`, `MessageType`, los 7
+- [x] **T1.** `src/lib/chat/types.ts`: `ChatEnvelope`, `MessageType`, los 7
   payloads y `ComboEntry`/`ComboItem` copiados verbatim de
   `rfc-transporte-websocket.md §3`, más un runtime guard por tipo (mismo
   estilo que `isProduct`/`validateProducts` en `src/lib/types.ts`). *Check:*
   `tsc --noEmit` en verde + Vitest: cada guard acepta un ejemplo válido y
-  rechaza uno malformado, para los 7 `type`.
-- [ ] **T2.** `src/lib/chat/budget-copy.ts`: mapea `reason`
+  rechaza uno malformado, para los 7 `type`. — Verificado verbatim contra
+  `renovarte-chat-gateway/src/types.ts` (ya mergeado a `main`), solo se
+  omiten los tipos server-only (`ChatControlItem`/`ConnectionItem`/
+  `BudgetLedgerItem`/`ConnectorInvocationPayload`) que nunca llegan al
+  navegador. `tests/unit/chat-types.test.ts`, 12 tests en verde.
+- [x] **T2.** `src/lib/chat/budget-copy.ts`: mapea `reason`
   (`"budget_cap"` | cualquier otro string | `undefined`) a 1 de 2 variantes
   de copy. *Check:* Vitest — los 4 `reason` del RFC (`budget_cap`,
   `maintenance`, `connection_error`, `internal_error`) más uno desconocido,
-  confirma exactamente 2 variantes usadas.
-- [ ] **T3.** `src/lib/chat/reducer.ts`: máquina de estados de conversación
+  confirma exactamente 2 variantes usadas. — `tests/unit/chat-budget-copy.test.ts`.
+- [x] **T3.** `src/lib/chat/reducer.ts`: máquina de estados de conversación
   — fase de conexión (`connecting`/`connecting_slow`/`ready`/`unavailable`),
   lista de mensajes anunciables (solo `text_done` + combos +
   `no_recommendation`, nunca `text_delta`), buffer de streaming separado que
   no entra al log, perfil con merge parcial (no reemplazo), visibilidad de
   chips de ejemplo (solo antes del primer mensaje del visitante), placeholder
   de "Cambiar". *Check:* Vitest exhaustivo, un caso por tipo de envelope +
-  AC-2/3/5/6/7/8/9/13 a nivel de forma del estado.
-- [ ] **T4.** `src/lib/chat/transport.ts`: wrapper de WebSocket inyectable
+  AC-2/3/5/6/7/8/9/13 a nivel de forma del estado. — `tests/unit/chat-reducer.test.ts`
+  (17 tests). Decisión de implementación no cubierta literalmente por
+  `plan.md`: el turno se considera terminado (composer reactivado) al
+  llegar el primer envelope entre `text_done`/`combo_recommendation`/
+  `no_recommendation` que matchee el `turn_id` pendiente — para el turno de
+  recomendación eso significa que el composer se reactiva ya en el
+  `text_done` (antes de que lleguen `profile_confirmed?`/
+  `combo_recommendation`), interpretación literal del check de T13
+  ("hasta que llegue el text_done/combo_recommendation/no_recommendation
+  correspondiente"), no una decisión de UX nueva.
+- [x] **T4.** `src/lib/chat/transport.ts`: wrapper de WebSocket inyectable
   (`WebSocketLike`), conexión perezosa (recién al primer `openChat()`),
   backoff de reconexión, valida cada frame con T1 antes de pasarlo al
   reducer (frame malformado → `unavailable/internal_error` local, nunca una
   excepción sin capturar), `NEXT_PUBLIC_CHAT_WS_URL` ausente → directo a
   `unavailable/connection_error` sin intentar abrir el socket. *Check:*
   Vitest con un `WebSocketLike` falso — conexión ok/falla, frame malformado,
-  backoff, env var ausente.
-- [ ] **T5.** `src/lib/chat/content.ts`: copy cliente-only (saludo inicial,
+  backoff, env var ausente. — `tests/unit/chat-transport.test.ts` (10 tests,
+  `vi.useFakeTimers()` para el backoff). El adaptador que envuelve el
+  `WebSocket` real del navegador (`ChatProvider.tsx`) es por delegación, no
+  un cast directo — el setter `onopen`/`onclose`/etc. del DOM real acepta un
+  argumento de evento, no estructuralmente asignable al tipo más simple de
+  `WebSocketLike`; documentado inline donde vive.
+- [x] **T5.** `src/lib/chat/content.ts`: copy cliente-only (saludo inicial,
   2–3 prompts de ejemplo, las 2 variantes de "no disponible" — borrador,
   pendiente de validación de CTO/CEO igual que en `ux.md`). *Check:*
   `tsc --noEmit` en verde; sin lógica que testear todavía (se consume en
-  T10/T11/T14).
+  T10/T11/T14). — Hecho; copy marcado explícitamente como borrador en el
+  archivo, mismo estado que en `ux.md`.
 
 #### Shell del panel y puntos de entrada
 
-- [ ] **T6.** `src/lib/use-mounted.ts`: extraer el `useMounted` existente de
+- [x] **T6.** `src/lib/use-mounted.ts`: extraer el `useMounted` existente de
   `MissionCarouselLive.tsx` sin cambiar su comportamiento; `ChatFab`/
   `ChatHomeInviteCard` (T7/T8) lo reusan. *Check:* la suite existente de
   `tests/unit/mission-section.test.tsx`/`tests/e2e/catalog.spec.ts` (casos de
-  AC-7 del carrusel) sigue en verde sin modificarla — regresión cero.
-- [ ] **T7.** `src/components/chat/ChatFab.tsx`: mobile ícono solo, desktop
+  AC-7 del carrusel) sigue en verde sin modificarla — regresión cero. —
+  Extraído tal cual, sin cambio de comportamiento; ambas suites siguen en
+  verde sin tocarlas.
+- [x] **T7.** `src/components/chat/ChatFab.tsx`: mobile ícono solo, desktop
   con label "Chat", `bottom-4 right-4` + `env(safe-area-inset-bottom)`,
   inerte (`tabIndex={-1}`, sin `onClick` funcional) hasta hidratar (T6).
   *Check:* Vitest con `renderToStaticMarkup` — el botón está en el HTML base
   sin `onClick` funcional/con `tabIndex="-1"` antes de hidratar, mismo
-  criterio que el test de `MissionCarouselLive` "no JS".
-- [ ] **T8.** `src/components/chat/ChatHomeInviteCard.tsx` + wire en
+  criterio que el test de `MissionCarouselLive` "no JS". —
+  `tests/unit/chat-entry-points.test.tsx`.
+- [x] **T8.** `src/components/chat/ChatHomeInviteCard.tsx` + wire en
   `src/app/page.tsx`, exactamente entre el `<div className="my-10 border-t
   ...">` y `<h2>Catálogo</h2>`. *Check:* Vitest con `renderToStaticMarkup` de
   `Home` — la tarjeta aparece en ese orden exacto del DOM, mismo patrón que
-  el test e2e existente de orden de `MissionSection`.
-- [ ] **T9.** `src/components/chat/ChatProvider.tsx` (contexto + T3 + T4,
+  el test e2e existente de orden de `MissionSection`. —
+  `tests/unit/chat-entry-points.test.tsx`. Agregado un `<div className="mb-10
+  sm:mb-16">` propio alrededor de la tarjeta (no un segundo `border-t`) para
+  mantener el mismo ritmo vertical que el resto de la home sin inventar un
+  divisor nuevo que `ux.md` no pidió.
+- [x] **T9.** `src/components/chat/ChatProvider.tsx` (contexto + T3 + T4,
   renderiza `{children}` + `ChatFab` + `ChatPanel` como hermanos) + wire en
   `src/app/layout.tsx` (fuera de `<main>`) + `src/components/chat/
   ChatPanel.tsx` shell (`role="dialog" aria-modal="true"
@@ -523,26 +549,28 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   atrapado, Escape/scrim/× devuelven foco al trigger exacto que abrió el
   panel). *Check:* Playwright e2e — abre vía FAB, Tab/Shift+Tab ciclan solo
   dentro del panel, Escape cierra y devuelve foco al FAB; abre vía tarjeta de
-  home, cerrar devuelve foco ahí.
+  home, cerrar devuelve foco ahí. — 4 tests en `tests/e2e/chat.spec.ts`
+  ("T9: ..."), todos en verde, incluido el clic en el scrim de desktop.
 
 #### Hilo, combos y composer
 
-- [ ] **T10.** `src/components/chat/ChatHeader.tsx` + `ChatProfileBar.tsx`:
+- [x] **T10.** `src/components/chat/ChatHeader.tsx` + `ChatProfileBar.tsx`:
   título + botón cerrar; chip "Piel: X · Presupuesto: $Y" + "Cambiar"
   (enfoca el composer con placeholder override, sin abrir un formulario).
   *Check:* Playwright e2e con `routeWebSocket` — scriptea un
   `profile_confirmed`, confirma el chip; un segundo `profile_confirmed`
   actualiza (no duplica) el chip; clic en "Cambiar" enfoca el composer con el
-  placeholder esperado.
-- [ ] **T11.** `src/components/chat/ChatThread.tsx` + `ChatMessageBubble.tsx`
+  placeholder esperado. — 2 tests en `tests/e2e/chat.spec.ts` ("T10: ...").
+- [x] **T11.** `src/components/chat/ChatThread.tsx` + `ChatMessageBubble.tsx`
   + `ChatExampleChips.tsx`: `role="log" aria-live="polite"
   aria-relevant="additions"`, prefijos `sr-only`, indicador de "escribiendo"
   como `role="status"` separado, chips de ejemplo que autocompletan sin
   enviar y desaparecen tras el primer mensaje del visitante, buffer de
   `text_delta` fuera del DOM del log hasta `text_done`. *Check:* Playwright
   e2e — scriptea N `text_delta` + 1 `text_done`, confirma que el contenido
-  del `log` solo cambia una vez (en `text_done`), nunca por token.
-- [ ] **T12.** `src/components/chat/ChatComboCard.tsx` +
+  del `log` solo cambia una vez (en `text_done`), nunca por token. —
+  "T11: ..." en `tests/e2e/chat.spec.ts`.
+- [x] **T12.** `src/components/chat/ChatComboCard.tsx` +
   `ChatComboList.tsx`: `<ol>`/`<li>`/`<h3>` por nivel, `<ul>` de productos con
   deep link `target="_blank" rel="noopener"` a `/producto/[id]`, prefijo
   `sr-only` "Total del combo: ", 3 variantes de texto de relación con
@@ -553,17 +581,22 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   presupuesto"), sin ninguna clase de alerta/rojo; Playwright e2e — scriptea
   un `combo_recommendation` completo, confirma exactamente 3 `<li>` montados
   de una sola vez (nunca una card parcial) y que cada link abre
-  `/producto/[id]` en pestaña nueva.
-- [ ] **T13.** `src/components/chat/ChatComposer.tsx`: textarea
+  `/producto/[id]` en pestaña nueva. — `tests/unit/chat-combo-card.test.tsx`
+  (7 tests) + "T12: ..." en `tests/e2e/chat.spec.ts`. El presupuesto usado
+  para el texto de relación se guarda como snapshot en el propio mensaje del
+  reducer (no se relee en vivo de `state.profile`) para que un "Cambiar"
+  posterior no reescriba retroactivamente el texto de una recomendación ya
+  mostrada — detalle de plomería de datos, no una decisión de UX nueva.
+- [x] **T13.** `src/components/chat/ChatComposer.tsx`: textarea
   auto-expandible (máx. ~4 líneas) + botón circular, deshabilitado mientras
   hay un turno en curso o en estado no disponible. *Check:* Playwright e2e —
   enviar deshabilita el composer hasta que llegue el `text_done`/
   `combo_recommendation`/`no_recommendation` correspondiente, luego se
-  reactiva.
+  reactiva. — "T13: ..." en `tests/e2e/chat.spec.ts`.
 
 #### Estado "no disponible" y cierre
 
-- [ ] **T14.** `src/components/chat/ChatUnavailableBlock.tsx`, wireado en
+- [x] **T14.** `src/components/chat/ChatUnavailableBlock.tsx`, wireado en
   `ChatThread`/`ChatPanel` para las 2 posiciones de `ux.md` (al abrir, a
   mitad de conversación): `role="status" aria-live="polite"`, `bg-sage-50`,
   las 2 variantes de copy (T2/T5), input `disabled` con el placeholder
@@ -571,30 +604,61 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   manda `unavailable/budget_cap` al conectar → copy dedicado reemplaza el
   saludo, composer deshabilitado, × sigue cerrando; (b) `unavailable` con
   otro `reason` → copy genérico; (c) `unavailable` a mitad de conversación →
-  hilo previo intacto y scrollable, solo el pie cambia.
-- [ ] **T15.** Wire de `no_recommendation` (AC-6): renderiza
+  hilo previo intacto y scrollable, solo el pie cambia. — "T14a/b/c" en
+  `tests/e2e/chat.spec.ts`, los 3 casos en verde.
+- [x] **T15.** Wire de `no_recommendation` (AC-6): renderiza
   `payload.mensaje` (provisto por `ai-agent`) como una `ChatMessageBubble`
   normal, sin badge/ícono de alerta ni botón de acción especial. *Check:*
   Playwright e2e — scriptea `no_recommendation`, confirma que renderiza con
   el mismo shape/testid que cualquier burbuja de `text_done`, solo cambia el
-  contenido.
-- [ ] **T16.** Pasada de `prefers-reduced-motion` sobre T9/T11/T12 (apertura/
+  contenido. — "T15: ..." en `tests/e2e/chat.spec.ts`.
+- [x] **T16.** Pasada de `prefers-reduced-motion` sobre T9/T11/T12 (apertura/
   cierre del panel, montaje de cards, pulso de "escribiendo") —
   `motion-reduce:`, sin librería de animación nueva. *Check:* Playwright e2e
   con `page.emulateMedia({ reducedMotion: "reduce" })`, confirma que el
   contenido igual aparece (sin depender de un `transitionend` que no
-  dispara).
-- [ ] **T17.** Suite e2e de AC-1/AC-11/progresividad en
+  dispara). — "T16: ..." en `tests/e2e/chat.spec.ts`. La animación de
+  montaje de las cards de combo (`motion-safe:animate-[chat-combo-in...]`)
+  y el pulso de "escribiendo" (`motion-safe:animate-pulse`) usan la variante
+  `motion-safe:` de Tailwind (equivalente a no aplicar la animación cuando
+  el usuario pide `reduced-motion`) en vez de `motion-reduce:` explícito —
+  mismo resultado, menos CSS. El panel/scrim de `ChatPanel` no tienen
+  ninguna transición de apertura/cierre propia (aparecen/desaparecen por
+  render condicional, sin CSS transition) — cumple "sin animación" por
+  construcción, no hay nada que neutralizar con `motion-reduce:` ahí.
+- [x] **T17.** Suite e2e de AC-1/AC-11/progresividad en
   `tests/e2e/chat.spec.ts` (archivo nuevo, no toca `catalog.spec.ts`): abre
   el chat sin ningún cookie/localStorage de sesión; grilla/filtro/búsqueda/
   ficha funcionan con el panel cerrado, con el panel en estado no disponible,
   y con `javaScriptEnabled: false` (mismo patrón que el test de
   `MissionCarouselLive`) — confirma FAB/tarjeta de home presentes pero
   inertes sin JS. *Check:* suite en verde, `tests/e2e/catalog.spec.ts`
-  existente sigue en verde sin modificarse.
-- [ ] **T18.** Cierre: agregar `NEXT_PUBLIC_CHAT_WS_URL` a
+  existente sigue en verde sin modificarse. — 18 tests, todos en verde;
+  `catalog.spec.ts` no se tocó (49/50 passed, 1 skip preexistente sin
+  relación con esta feature). **Hallazgo no trivial documentado acá porque
+  no está en ningún lado más:** `page.routeWebSocket()` (instalado,
+  `playwright-core@1.63.0`) solo intercepta WebSockets abiertos por
+  documentos cargados *después* de registrar la ruta — si se registra
+  después de `page.goto()` (como parecía natural, dado que la conexión de
+  esta feature es perezosa y el socket recién se abre al primer click en el
+  FAB, mucho después de la carga de la página), la intercepción nunca
+  engancha y el navegador intenta una conexión de red real. Confirmado
+  empíricamente con un script mínimo fuera del test runner antes de
+  concluir que era un bug del entorno. Los 18 tests de este archivo
+  registran `routeWebSocket()` antes de `page.goto()`, documentado también
+  en el comment-block de cabecera del archivo para que no se repita el
+  mismo diagnóstico.
+- [x] **T18.** Cierre: agregar `NEXT_PUBLIC_CHAT_WS_URL` a
   `.env.local.example`/README (solo la URL pública del gateway, nunca una
   key — valor real pendiente de que `renovarte-chat-gateway` exista) y
   correr `pnpm gate` completo (lint + build + typecheck + Vitest +
   `check:leak` + Playwright) en verde. *Check:* `pnpm gate` en verde de punta
-  a punta con todo el código de este agente incluido.
+  a punta con todo el código de este agente incluido. — `.env.local.example`
+  nuevo + sección "Chat 'Colibrí' (spec 0016)" en `README.md`.
+  `playwright.config.ts` hornea `NEXT_PUBLIC_CHAT_WS_URL=wss://colibri.test/ws`
+  solo para el build que levanta `webServer` de e2e (URL de fixture, no un
+  valor real) — el `pnpm build` normal de `pnpm gate`/CI sigue sin la env
+  var seteada, que es el estado real hasta que `renovarte-chat-gateway`
+  exista. `pnpm gate` completo: lint, build, typecheck, 163 tests Vitest,
+  `check:leak`, 49/50 Playwright (1 skip preexistente) — todo en verde, ver
+  reporte de implementación para el output real.
