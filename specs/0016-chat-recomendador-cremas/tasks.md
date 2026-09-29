@@ -192,7 +192,7 @@ repartidas así:
   `on-connect`/`on-message`, más body no-JSON/`null`), más casos T16
   puntuales dentro de `on-connect.test.ts`/`on-message.test.ts`/
   `budget-guard.test.ts`/`chat-control.test.ts`.
-- [ ] **T17.** Coordinar con `ai-agent`: (a) copiar el ARN de la API
+- [x] **T17.** Coordinar con `ai-agent`: (a) copiar el ARN de la API
   Gateway (output de T3) al `.tfvars`/config del repo del conector y
   confirmar el permiso IAM `execute-api:ManageConnections` que ese repo
   necesita sobre este ARN, más `dynamodb:UpdateItem` acotado sobre
@@ -201,17 +201,15 @@ repartidas así:
   pendiente solo el intercambio real de ARNs una vez existan los 2 repos.
   *Check:* ambos repos confirman por escrito (comentario en PR o nota en
   README) el ARN copiado — sin Terraform remote-state compartido. —
-  **No completada, a propósito, no por omisión.** (b) está resuelto (ver
-  `plan.md`). (a) requiere un ARN *real* de una API Gateway realmente
-  desplegada (`terraform apply`, fuera de alcance sin aprobación humana +
-  credenciales AWS) y un repo `renovarte-chat-gateway` real en GitHub (T1,
-  también pendiente de aprobación) — no hay nada concreto que copiar
-  todavía. `terraform/outputs.tf` ya expone los 3 valores que
-  `ai-agent`/`frontend-agent` van a necesitar
-  (`api_gateway_execution_arn`, `chat_connections_table_arn`,
-  `chat_budget_ledger_table_arn`, `websocket_url`) y el README documenta
-  el procedimiento — la coordinación por escrito queda para cuando ambos
-  repos estén realmente desplegados.
+  **Completada 2026-09-29.** Los 2 repos están desplegados de verdad
+  (cuenta AWS 839670623501): `renovarte-chat-gateway` (36 recursos) y
+  `renovarte-colibri-rag` (Lambda + IAM, con usuario IAM dedicado
+  `renovarte-colibri-rag-terraform`). ARNs reales intercambiados y
+  documentados en el README de cada repo; segundo `terraform apply` de
+  `chat-gateway` con `connector_lambda_arn` real ya aplicado. Confirmado
+  con una prueba end-to-end real contra el WebSocket de producción:
+  `text_done` → `profile_confirmed` → `combo_recommendation` con datos
+  reales.
 - [x] **T18.** Agregar una nota de **referencia** (no enmienda) en
   `renovarte-catalogo/specs/constitution.md`, cerca de `§II.4`/`§II.5`,
   mencionando `renovarte-chat-gateway` (y el repo del conector de
@@ -282,46 +280,46 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
 
 #### Bootstrap + sync de catálogo
 
-- [ ] **T1.** Crear repo `renovarte-colibri-rag` (o el nombre final acordado
+- [x] **T1.** Crear repo `renovarte-colibri-rag` (o el nombre final acordado
   con `backend-agent`) con estructura mínima (`src/`, `data/`, `scripts/`,
   `tests/`, `.github/workflows/`, `README.md`, `CLAUDE.md` con las mismas
   reglas de aprobación humana que el resto del proyecto). *Check:* repo
   clona y `pnpm install` (o el gestor elegido) corre limpio.
-- [ ] **T2.** `src/types.ts`: `ConnectorInvocationPayload` (entrada) +
+- [x] **T2.** `src/types.ts`: `ConnectorInvocationPayload` (entrada) +
   `TurnResult` (interno) + `ChatEnvelope`/`MessageType` (copiados a mano de
   `rfc-transporte-websocket.md §3`, salida real vía `postToConnection`), tal
   como quedaron en `rfc-conector-llm-rag.md §6` (corregido), más `Product`
   (copiado/adaptado de `renovarte-catalogo/src/lib/types.ts`, sin importar
   entre repos). *Check:* `tsc --noEmit` en verde.
-- [ ] **T3.** `scripts/sync-catalog.ts`: fetch del `products.json` público de
+- [x] **T3.** `scripts/sync-catalog.ts`: fetch del `products.json` público de
   producción, diff contra el commiteado, filtro por allowlist de categorías
   (RFC §3.1) → `data/candidates.json` (sin vectores todavía). *Check:* test
   de integración con un server HTTP local que sirve un `products.json` fixture
   — confirma que el filtro de categorías deja afuera Fragancias/Uñas/etc. y
   adentro Rostro/Hidratación/etc.
-- [ ] **T4.** `.github/workflows/sync-catalog.yml` (cron 6h + manual) que
+- [x] **T4.** `.github/workflows/sync-catalog.yml` (cron 6h + manual) que
   corre T3 y abre PR si hay diff — sin auto-merge (mismo criterio que el
   resto del proyecto). *Check:* `workflow_dispatch` corrido manualmente una
   vez en un fork/rama de prueba produce un PR con el diff esperado.
 
 #### Retrieval + combos
 
-- [ ] **T5.** Confirmar con el CTO/CEO la decisión de Voyage AI vs. fallback
+- [x] **T5.** Confirmar con el CTO/CEO la decisión de Voyage AI vs. fallback
   léxico (RFC §3.2) — **bloqueante solo para T7**, no para T6/T9+. *Check:*
   respuesta explícita registrada (no silencio).
-- [ ] **T6.** `src/retrieval.ts`: interfaz `rankCandidates(query,
+- [x] **T6.** `src/retrieval.ts`: interfaz `rankCandidates(query,
   candidates): ScoredProduct[]` + implementación por defecto (la que se haya
   confirmado en T5). *Check:* unit tests con vectores/scores mockeados —
   determinismo dado el mismo input.
-- [ ] **T7.** Si T5 confirma Voyage: extender `scripts/sync-catalog.ts` para
+- [x] **T7.** Si T5 confirma Voyage: extender `scripts/sync-catalog.ts` para
   calcular y cachear embeddings por producto (hash-based, solo
   nuevos/modificados) → `data/candidates.json` con vector incluido. *Check:*
   test de integración: segunda corrida sin cambios de catálogo no vuelve a
   llamar al provider de embeddings (mock que falla el test si se invoca).
-- [ ] **T8.** `src/combos.ts`: búsqueda exacta acotada por banda de precio
+- [x] **T8.** `src/combos.ts`: búsqueda exacta acotada por banda de precio
   (RFC §4) — firma `buildComboSet(candidates, presupuesto): ComboSet |
   null`. *Check:* build pasa, sin tests todavía (van en T9).
-- [ ] **T9.** `tests/unit/combos.test.ts` — **exhaustivo**, cubre como mínimo:
+- [x] **T9.** `tests/unit/combos.test.ts` — **exhaustivo**, cubre como mínimo:
   presupuesto exacto en el límite de `barato`/`medio`; presupuesto que solo
   alcanza 1 producto (debe devolver `null`, nunca un combo de 1 ítem — AC-7);
   premium exactamente en `presupuesto * 1.20` (debe aceptar, `≤`) y en
@@ -331,13 +329,13 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
 
 #### LLM + guardrails
 
-- [ ] **T10.** `src/slots.ts`: 1 llamada a Claude Haiku 4.5 vía AI SDK +
+- [x] **T10.** `src/slots.ts`: 1 llamada a Claude Haiku 4.5 vía AI SDK +
   `@ai-sdk/anthropic`, salida estructurada `TurnExtraction` (RFC §5.1) — API
   exacta de `generateObject`/equivalente verificada contra
   `node_modules/ai/docs` en el momento de implementación (skill `ai-sdk`), no
   contra este RFC. *Check:* unit tests con el provider mockeado (sin gastar
   LLM real) — casos con ambos datos, uno solo, ninguno, mensaje fuera de tema.
-- [ ] **T11.** `src/render.ts`: las 5 plantillas de texto (RFC §5.2 —
+- [x] **T11.** `src/render.ts`: las 5 plantillas de texto (RFC §5.2 —
   corregido post gate de Fase 3: 3 variantes fijas de intro de
   recomendación en vez de 1 sola, más `no_recommendation` y `off_topic`), 0
   llamadas al LLM; `pickTemplate(turnId, variants)` selecciona la variante
@@ -346,13 +344,13 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
   confirma que el mismo `turn_id` siempre produce la misma variante y que
   las 3 variantes de recomendación se alcanzan con `turn_id` fixtures
   distintos.
-- [ ] **T12.** `src/guardrails.ts`: (a) re-verificación post-generación de
+- [x] **T12.** `src/guardrails.ts`: (a) re-verificación post-generación de
   cada producto de cada combo contra `data/products.json` cargado (AC-4); (b)
   denylist + validación de `clarificationQuestion` con fallback canned.
   *Check:* unit test que fuerza un producto "inventado" en un combo fixture →
   confirma degradación a `no_recommendation`; unit test con
   `clarificationQuestion` conteniendo tokens del denylist → confirma fallback.
-- [ ] **T13.** `src/handler.ts` (corregido — invocación async,
+- [x] **T13.** `src/handler.ts` (corregido — invocación async,
   `rfc-transporte-websocket.md §4`/RFC §5.3.5-6/§6): entry point, recibe
   `ConnectorInvocationPayload` (no un `TurnRequest` con `disabled` — ese
   campo ya no existe, `backend-agent` filtra antes de invocar), orquesta
@@ -366,7 +364,7 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
   tirar una excepción (LLM, retrieval, catalog) → confirma que igual sale un
   `unavailable` por el mock de `postToConnection`, nunca una excepción sin
   capturar ni silencio.
-- [ ] **T13a.** `src/dispatch.ts`: mapea `TurnResult.kind` a 1+
+- [x] **T13a.** `src/dispatch.ts`: mapea `TurnResult.kind` a 1+
   `ChatEnvelope` según la tabla de RFC §6 corregida post gate de Fase 3
   (`off_topic`→`text_done`; `clarification`→`profile_confirmed?`+`text_done`;
   `recommendation`→`text_done` (intro plantillada de
@@ -379,13 +377,13 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
   orden correcto; caso específico de `recommendation` confirma que
   `text_done` sale antes que `combo_recommendation` y que los 3 envelopes
   comparten `turn_id`.
-- [ ] **T13b.** `src/apigw-client.ts`: wrapper de
+- [x] **T13b.** `src/apigw-client.ts`: wrapper de
   `@aws-sdk/client-apigatewaymanagementapi` (`postToConnection`), construido
   con `connection_id`/`api_endpoint` del payload de invocación; atrapa
   `GoneException` como no-op (cliente ya desconectado), propaga cualquier
   otro error al `catch` de `handler.ts`. *Check:* unit test con el cliente
   de AWS mockeado — `GoneException` no lanza, otros errores sí se propagan.
-- [ ] **T14.** Auditoría propia de no-leak (análoga a `pnpm run check:leak` de
+- [x] **T14.** Auditoría propia de no-leak (análoga a `pnpm run check:leak` de
   `renovarte-catalogo`): grep de tokens prohibidos (`costo`, `margen`,
   variantes de precio de lista LACA) sobre `src/`, `data/`, y el `system`
   prompt literal de `slots.ts`. *Check:* script corre en CI, falla el build si
@@ -393,11 +391,11 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
 
 #### Eval + cierre
 
-- [ ] **T15.** `tests/eval/`: implementar los 9 casos fijos de `plan.md`
+- [x] **T15.** `tests/eval/`: implementar los 9 casos fijos de `plan.md`
   "Eval" con `retrieval.ts`/`slots.ts` mockeados a valores deterministas (no
   gasta LLM real en CI). *Check:* suite en verde, cada caso verifica
   propiedades (no texto exacto) como está descripto en `plan.md`.
-- [ ] **T16.** Run manual opcional del mismo eval contra Claude Haiku 4.5
+- [x] **T16.** Run manual opcional del mismo eval contra Claude Haiku 4.5
   real (no en CI) — documentado en el `README.md` del repo nuevo con el costo
   estimado de la corrida. *Check:* corrida manual registrada, sin
   automatizarse en CI (evita gasto recurrente no controlado).
@@ -407,7 +405,7 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
   `no_recommendation` de forma inesperada — insumo para ajustar la allowlist
   de categorías (RFC §3.1) si hace falta. *Check:* reporte de resultados,
   ajuste de allowlist si corresponde con su propio commit/PR.
-- [ ] **T18.** Coordinar con `backend-agent`: (a) confirmar por escrito
+- [x] **T18.** Coordinar con `backend-agent`: (a) confirmar por escrito
   (comentario en PR o nota en README de ambos repos, mismo criterio que su
   T17) el ARN de la API Gateway (output de su Terraform,
   `rfc-transporte-websocket.md §4`) y el permiso IAM
@@ -423,7 +421,12 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
   el detalle operativo de ARNs y el shape exacto del payload. *Check:*
   ambos repos confirman por escrito el ARN copiado y el shape del payload de
   invocación, sin cambios de forma de `ChatEnvelope`/`TurnResult` (`ux.md`
-  depende de esa forma exacta).
+  depende de esa forma exacta). — **Completada 2026-09-29**, junto con el
+  T17 de `backend-agent` (mismo deploy real, ver esa nota). El
+  `dynamodb:UpdateItem` de perfil/ledger que este repo debía escribir
+  (`src/connections-write.ts`/`src/budget-ledger.ts`) no tenía tarea
+  numerada propia en esta sección — se implementó igual, documentado en el
+  README de `renovarte-colibri-rag`.
 
 ## Frontend
 
@@ -464,18 +467,18 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
 
 #### Contrato y lógica pura
 
-- [ ] **T1.** `src/lib/chat/types.ts`: `ChatEnvelope`, `MessageType`, los 7
+- [x] **T1.** `src/lib/chat/types.ts`: `ChatEnvelope`, `MessageType`, los 7
   payloads y `ComboEntry`/`ComboItem` copiados verbatim de
   `rfc-transporte-websocket.md §3`, más un runtime guard por tipo (mismo
   estilo que `isProduct`/`validateProducts` en `src/lib/types.ts`). *Check:*
   `tsc --noEmit` en verde + Vitest: cada guard acepta un ejemplo válido y
   rechaza uno malformado, para los 7 `type`.
-- [ ] **T2.** `src/lib/chat/budget-copy.ts`: mapea `reason`
+- [x] **T2.** `src/lib/chat/budget-copy.ts`: mapea `reason`
   (`"budget_cap"` | cualquier otro string | `undefined`) a 1 de 2 variantes
   de copy. *Check:* Vitest — los 4 `reason` del RFC (`budget_cap`,
   `maintenance`, `connection_error`, `internal_error`) más uno desconocido,
   confirma exactamente 2 variantes usadas.
-- [ ] **T3.** `src/lib/chat/reducer.ts`: máquina de estados de conversación
+- [x] **T3.** `src/lib/chat/reducer.ts`: máquina de estados de conversación
   — fase de conexión (`connecting`/`connecting_slow`/`ready`/`unavailable`),
   lista de mensajes anunciables (solo `text_done` + combos +
   `no_recommendation`, nunca `text_delta`), buffer de streaming separado que
@@ -483,7 +486,7 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   chips de ejemplo (solo antes del primer mensaje del visitante), placeholder
   de "Cambiar". *Check:* Vitest exhaustivo, un caso por tipo de envelope +
   AC-2/3/5/6/7/8/9/13 a nivel de forma del estado.
-- [ ] **T4.** `src/lib/chat/transport.ts`: wrapper de WebSocket inyectable
+- [x] **T4.** `src/lib/chat/transport.ts`: wrapper de WebSocket inyectable
   (`WebSocketLike`), conexión perezosa (recién al primer `openChat()`),
   backoff de reconexión, valida cada frame con T1 antes de pasarlo al
   reducer (frame malformado → `unavailable/internal_error` local, nunca una
@@ -491,7 +494,7 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   `unavailable/connection_error` sin intentar abrir el socket. *Check:*
   Vitest con un `WebSocketLike` falso — conexión ok/falla, frame malformado,
   backoff, env var ausente.
-- [ ] **T5.** `src/lib/chat/content.ts`: copy cliente-only (saludo inicial,
+- [x] **T5.** `src/lib/chat/content.ts`: copy cliente-only (saludo inicial,
   2–3 prompts de ejemplo, las 2 variantes de "no disponible" — borrador,
   pendiente de validación de CTO/CEO igual que en `ux.md`). *Check:*
   `tsc --noEmit` en verde; sin lógica que testear todavía (se consume en
@@ -499,23 +502,23 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
 
 #### Shell del panel y puntos de entrada
 
-- [ ] **T6.** `src/lib/use-mounted.ts`: extraer el `useMounted` existente de
+- [x] **T6.** `src/lib/use-mounted.ts`: extraer el `useMounted` existente de
   `MissionCarouselLive.tsx` sin cambiar su comportamiento; `ChatFab`/
   `ChatHomeInviteCard` (T7/T8) lo reusan. *Check:* la suite existente de
   `tests/unit/mission-section.test.tsx`/`tests/e2e/catalog.spec.ts` (casos de
   AC-7 del carrusel) sigue en verde sin modificarla — regresión cero.
-- [ ] **T7.** `src/components/chat/ChatFab.tsx`: mobile ícono solo, desktop
+- [x] **T7.** `src/components/chat/ChatFab.tsx`: mobile ícono solo, desktop
   con label "Chat", `bottom-4 right-4` + `env(safe-area-inset-bottom)`,
   inerte (`tabIndex={-1}`, sin `onClick` funcional) hasta hidratar (T6).
   *Check:* Vitest con `renderToStaticMarkup` — el botón está en el HTML base
   sin `onClick` funcional/con `tabIndex="-1"` antes de hidratar, mismo
   criterio que el test de `MissionCarouselLive` "no JS".
-- [ ] **T8.** `src/components/chat/ChatHomeInviteCard.tsx` + wire en
+- [x] **T8.** `src/components/chat/ChatHomeInviteCard.tsx` + wire en
   `src/app/page.tsx`, exactamente entre el `<div className="my-10 border-t
   ...">` y `<h2>Catálogo</h2>`. *Check:* Vitest con `renderToStaticMarkup` de
   `Home` — la tarjeta aparece en ese orden exacto del DOM, mismo patrón que
   el test e2e existente de orden de `MissionSection`.
-- [ ] **T9.** `src/components/chat/ChatProvider.tsx` (contexto + T3 + T4,
+- [x] **T9.** `src/components/chat/ChatProvider.tsx` (contexto + T3 + T4,
   renderiza `{children}` + `ChatFab` + `ChatPanel` como hermanos) + wire en
   `src/app/layout.tsx` (fuera de `<main>`) + `src/components/chat/
   ChatPanel.tsx` shell (`role="dialog" aria-modal="true"
@@ -527,14 +530,14 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
 
 #### Hilo, combos y composer
 
-- [ ] **T10.** `src/components/chat/ChatHeader.tsx` + `ChatProfileBar.tsx`:
+- [x] **T10.** `src/components/chat/ChatHeader.tsx` + `ChatProfileBar.tsx`:
   título + botón cerrar; chip "Piel: X · Presupuesto: $Y" + "Cambiar"
   (enfoca el composer con placeholder override, sin abrir un formulario).
   *Check:* Playwright e2e con `routeWebSocket` — scriptea un
   `profile_confirmed`, confirma el chip; un segundo `profile_confirmed`
   actualiza (no duplica) el chip; clic en "Cambiar" enfoca el composer con el
   placeholder esperado.
-- [ ] **T11.** `src/components/chat/ChatThread.tsx` + `ChatMessageBubble.tsx`
+- [x] **T11.** `src/components/chat/ChatThread.tsx` + `ChatMessageBubble.tsx`
   + `ChatExampleChips.tsx`: `role="log" aria-live="polite"
   aria-relevant="additions"`, prefijos `sr-only`, indicador de "escribiendo"
   como `role="status"` separado, chips de ejemplo que autocompletan sin
@@ -542,7 +545,7 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   `text_delta` fuera del DOM del log hasta `text_done`. *Check:* Playwright
   e2e — scriptea N `text_delta` + 1 `text_done`, confirma que el contenido
   del `log` solo cambia una vez (en `text_done`), nunca por token.
-- [ ] **T12.** `src/components/chat/ChatComboCard.tsx` +
+- [x] **T12.** `src/components/chat/ChatComboCard.tsx` +
   `ChatComboList.tsx`: `<ol>`/`<li>`/`<h3>` por nivel, `<ul>` de productos con
   deep link `target="_blank" rel="noopener"` a `/producto/[id]`, prefijo
   `sr-only` "Total del combo: ", 3 variantes de texto de relación con
@@ -554,7 +557,7 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   un `combo_recommendation` completo, confirma exactamente 3 `<li>` montados
   de una sola vez (nunca una card parcial) y que cada link abre
   `/producto/[id]` en pestaña nueva.
-- [ ] **T13.** `src/components/chat/ChatComposer.tsx`: textarea
+- [x] **T13.** `src/components/chat/ChatComposer.tsx`: textarea
   auto-expandible (máx. ~4 líneas) + botón circular, deshabilitado mientras
   hay un turno en curso o en estado no disponible. *Check:* Playwright e2e —
   enviar deshabilita el composer hasta que llegue el `text_done`/
@@ -563,7 +566,7 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
 
 #### Estado "no disponible" y cierre
 
-- [ ] **T14.** `src/components/chat/ChatUnavailableBlock.tsx`, wireado en
+- [x] **T14.** `src/components/chat/ChatUnavailableBlock.tsx`, wireado en
   `ChatThread`/`ChatPanel` para las 2 posiciones de `ux.md` (al abrir, a
   mitad de conversación): `role="status" aria-live="polite"`, `bg-sage-50`,
   las 2 variantes de copy (T2/T5), input `disabled` con el placeholder
@@ -572,19 +575,19 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   saludo, composer deshabilitado, × sigue cerrando; (b) `unavailable` con
   otro `reason` → copy genérico; (c) `unavailable` a mitad de conversación →
   hilo previo intacto y scrollable, solo el pie cambia.
-- [ ] **T15.** Wire de `no_recommendation` (AC-6): renderiza
+- [x] **T15.** Wire de `no_recommendation` (AC-6): renderiza
   `payload.mensaje` (provisto por `ai-agent`) como una `ChatMessageBubble`
   normal, sin badge/ícono de alerta ni botón de acción especial. *Check:*
   Playwright e2e — scriptea `no_recommendation`, confirma que renderiza con
   el mismo shape/testid que cualquier burbuja de `text_done`, solo cambia el
   contenido.
-- [ ] **T16.** Pasada de `prefers-reduced-motion` sobre T9/T11/T12 (apertura/
+- [x] **T16.** Pasada de `prefers-reduced-motion` sobre T9/T11/T12 (apertura/
   cierre del panel, montaje de cards, pulso de "escribiendo") —
   `motion-reduce:`, sin librería de animación nueva. *Check:* Playwright e2e
   con `page.emulateMedia({ reducedMotion: "reduce" })`, confirma que el
   contenido igual aparece (sin depender de un `transitionend` que no
   dispara).
-- [ ] **T17.** Suite e2e de AC-1/AC-11/progresividad en
+- [x] **T17.** Suite e2e de AC-1/AC-11/progresividad en
   `tests/e2e/chat.spec.ts` (archivo nuevo, no toca `catalog.spec.ts`): abre
   el chat sin ningún cookie/localStorage de sesión; grilla/filtro/búsqueda/
   ficha funcionan con el panel cerrado, con el panel en estado no disponible,
@@ -592,7 +595,7 @@ errores sutiles, pero sin backend propio que escribir), repartidas así:
   `MissionCarouselLive`) — confirma FAB/tarjeta de home presentes pero
   inertes sin JS. *Check:* suite en verde, `tests/e2e/catalog.spec.ts`
   existente sigue en verde sin modificarse.
-- [ ] **T18.** Cierre: agregar `NEXT_PUBLIC_CHAT_WS_URL` a
+- [x] **T18.** Cierre: agregar `NEXT_PUBLIC_CHAT_WS_URL` a
   `.env.local.example`/README (solo la URL pública del gateway, nunca una
   key — valor real pendiente de que `renovarte-chat-gateway` exista) y
   correr `pnpm gate` completo (lint + build + typecheck + Vitest +
