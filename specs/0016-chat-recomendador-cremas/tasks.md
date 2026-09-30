@@ -417,9 +417,11 @@ cero, sin nada reusable de `renovarte-catalogo` salvo el schema de
   (2) `mas_barato` maximiza relevancia ≤ presupuesto y queda pegado al tope,
   sin lugar para `medio` (falla sensible/madura a 25k; caso 1 con $40.000
   da $38.640 / $40.000) — el fix toca la definición de "más barato" (spec),
-  decisión de producto; (3) `sync-catalog.yml` falló en sus 18 corridas:
-  faltan la variable `CATALOGO_PRODUCTS_URL` y el secret `VOYAGE_API_KEY`
-  en el repo — el chat no se entera de cambios futuros del catálogo.
+  decisión de producto; (3) `sync-catalog.yml` falló en sus 18 corridas
+  por faltar la variable `CATALOGO_PRODUCTS_URL` y el secret
+  `VOYAGE_API_KEY` — **resuelto 2026-09-30**: cargados en el repo, corrida
+  manual en verde (run 36726842172, 0 cambios vs. prod, 0 embeddings
+  nuevos).
 - [x] **T18.** Coordinar con `backend-agent`: (a) confirmar por escrito
   (comentario en PR o nota en README de ambos repos, mismo criterio que su
   T17) el ARN de la API Gateway (output de su Terraform,
