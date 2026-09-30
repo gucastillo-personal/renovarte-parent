@@ -1,6 +1,6 @@
 # 0016 — Chat recomendador de combos ("Colibrí")
 
-**Status:** Backlog
+**Status:** ✅ Cerrada (2026-09-30) — desplegada en producción; la deuda técnica que quedó se sigue en el [tablero de deuda técnica](https://claude.ai/artifact/62UfQmiGr14ad6XJVZDbir)
 **PRD:** RF-14, RNF-06, RNF-07, RNF-08, RNF-09 (enmienda 2026-09-21,
 precisión 2026-09-21, enmienda 2026-09-21b a
 [PRD-catalogo-renovarte.md](../../renovarte-catalogo/docs/PRD/PRD-catalogo-renovarte.md))
