@@ -74,20 +74,16 @@ agente se detiene y lo reporta — igual que un conflicto con
 
 | ADR | Decisión | Nivel | Estado | Origen |
 |---|---|---|---|---|
-| — | *(backfill en curso — ver abajo)* | | | |
+| [ADR-0001](./ADR-0001-superproyecto-submodulos.md) | Superproyecto con submódulos; un repo, una responsabilidad | L2 | Accepted | `PLAN.md` (retroactivo) |
+| [ADR-0002](./ADR-0002-catalogo-ssg-sin-backend.md) | Catálogo SSG sin backend ni base de datos, $0 | L2 | Accepted | RFC-0001 catálogo (retroactivo) |
+| [ADR-0003](./ADR-0003-ingesta-en-pipeline.md) | Ingesta en `renovarte-pipeline`; `products.json` único contrato | L2 | Accepted | `PLAN.md` (retroactivo) |
+| [ADR-0004](./ADR-0004-runtime-chat-fuera-del-catalogo.md) | Runtime del chat fuera del catálogo, en 2 repos nuevos | L2 | Accepted | spec 0016 (retroactivo) |
+| [ADR-0005](./ADR-0005-tope-costo-usd20.md) | Excepción de costo: tope USD 20/mes, ledger + kill-switch | L3 | Accepted | spec 0016, 0017 (retroactivo) |
+| [ADR-0006](./ADR-0006-servicio-ordenes.md) | `renovarte-ordenes`: Function URL + DynamoDB + SES | L3 | Accepted | spec 0017 (retroactivo) |
 
 ### Backfill pendiente (decisiones ya tomadas, todavía sin ADR)
 
-Prioritarias, se escriben primero con estos números:
-
-| ADR | Decisión | Fuente actual |
-|---|---|---|
-| 0001 | Superproyecto con submódulos; un repo, una responsabilidad | `PLAN.md`, `specs/constitution.md` §II.4/§II.6 |
-| 0002 | Catálogo SSG sin backend ni base de datos, $0 | `renovarte-catalogo` RFC-0001, su constitution §II.4-5 |
-| 0003 | Ingesta en `renovarte-pipeline` (Python); `products.json` como único contrato con el catálogo | `PLAN.md` |
-| 0004 | Runtime del chat fuera del catálogo, en 2 repos nuevos, sin enmendar §II.4 | spec 0016 (RNF-08) |
-| 0005 | Excepción de costo: tope de USD 20/mes con ledger propio + kill-switch | RNF-09/RNF-14, `rfc-transporte-websocket.md` §5, `rfc-servicio-ordenes.md` §8 |
-| 0006 | `renovarte-ordenes`: Lambda Function URL + DynamoDB + SES | `rfc-servicio-ordenes.md` §1-2 |
+Las prioritarias (ADR-0001 a ADR-0006) ya están escritas, en el índice de arriba.
 
 Resto (sin número todavía; se numeran cuando se escriban):
 
