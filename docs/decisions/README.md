@@ -83,15 +83,16 @@ agente se detiene y lo reporta — igual que un conflicto con
 | [ADR-0007](./ADR-0007-precio-pdf-revision-manual.md) | Precio del PDF LACA como override manual por producto | L2 | Superseded por ADR-0008 | spec 0008 catálogo (retroactivo) |
 | [ADR-0008](./ADR-0008-precio-pdf-automatico-piso-margen.md) | Precio ABC del PDF automático, con piso de costo+margen | L2 | Accepted | `PLAN.md` (retroactivo) |
 | [ADR-0009](./ADR-0009-handoff-pipeline-catalogo-por-pr.md) | Handoff pipeline → catálogo por PR automático; ingesta manual | L2 | Accepted | `PLAN.md` (retroactivo) |
+| [ADR-0010](./ADR-0010-notificaciones-event-driven.md) | Notificaciones event-driven SNS → SQS → Lambda → Discord, best-effort | L3 | Accepted | spec 0001 (retroactivo) |
 
 ### Backfill pendiente (decisiones ya tomadas, todavía sin ADR)
 
-Las prioritarias (ADR-0001 a ADR-0006) el par de precio del PDF
-(ADR-0007/0008) y el handoff (ADR-0009) ya están escritos, en el índice de arriba.
+Ya están escritas, en el índice de arriba: las prioritarias (ADR-0001 a
+ADR-0006), el par de precio del PDF (ADR-0007/0008), el handoff
+(ADR-0009) y events (ADR-0010).
 
 Resto (sin número todavía; se numeran cuando se escriban):
 
-- Notificaciones event-driven SNS → SQS → Lambda, best-effort (`specs/0001-poc-event-driven-discord/PLAN-EVENTS.md`)
 - AWS + Terraform como plataforma de runtime fuera del catálogo (implícito en events, 0016, 0017)
 - API Gateway WebSocket + invocación async + `postToConnection` (`rfc-transporte-websocket.md` §2-4)
 - Claude Haiku 4.5, una sola llamada por turno, texto plantillado (`rfc-conector-llm-rag.md` §5)

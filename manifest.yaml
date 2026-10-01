@@ -76,7 +76,7 @@ repositories:
     providers: [aws, discord]
     docs:
       runbook: docs/runbook.md
-    foundational_decisions: []    # backfill pendiente (event-driven SNS→SQS→Lambda)
+    foundational_decisions: [ADR-0010]
 
   renovarte-chat-gateway:
     path: renovarte-chat-gateway
