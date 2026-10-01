@@ -58,3 +58,28 @@ explícitamente — igual que el resto de los gates de fase de `/feature`, el
 silencio o un "ok" ambiguo no cuentan como aprobación. Esto aplica aunque
 el `ux-agent` no haya encontrado ninguna divergencia respecto al plan
 técnico existente.
+
+## Descubrimiento de contexto (base de conocimiento)
+
+Antes de diseñar o implementar cualquier cosa en este proyecto — dentro o
+fuera de `/feature` —, el agente arma su contexto en este orden, en vez de
+inferirlo del código o de documentos históricos (`PLAN.md` es histórico):
+
+1. [`manifest.yaml`](./manifest.yaml): qué repos hay, qué hace cada uno,
+   qué contratos producen o consumen y qué proveedores usan. De ahí salen
+   los repos a inspeccionar.
+2. El frontmatter y `## Decisiones relacionadas` de la spec en curso
+   (`specs/NNNN-slug/spec.md`), si la hay.
+3. Los ADRs relevantes en [`docs/decisions/`](./docs/decisions/README.md):
+   los que lista la spec, más los que mencionan los repos, contratos o
+   proveedores involucrados (`grep -rl "<repo|proveedor>" docs/decisions`).
+4. [`specs/constitution.md`](./specs/constitution.md) y la
+   `specs/constitution.md` de cada repo tocado.
+5. El documento de schema de cada contrato involucrado (campo `schema` del
+   manifest).
+
+Un ADR con status `Accepted` es una restricción: si un diseño o una
+implementación necesita contradecirlo, el agente se detiene y lo reporta
+como "requiere supersede" — nunca lo contradice en silencio ni edita el
+ADR para que coincida. Los criterios para decidir cuándo una decisión
+nueva necesita ADR están en `docs/decisions/README.md`.

@@ -37,6 +37,39 @@ Invariantes no negociables (una responsabilidad por repo, $0 infra por
 defecto, repos nuevos siempre como submódulo con su propio `CLAUDE.md`,
 etc.) en [`constitution.md`](./constitution.md).
 
+## Frontmatter de la spec
+
+El `spec.md` de cada feature (en la 0001, que predata la convención,
+`PLAN-EVENTS.md`) abre con un frontmatter YAML que la conecta al grafo de
+conocimiento. Lo leen los agentes en el descubrimiento de contexto
+(`CLAUDE.md`, paso 2) y Obsidian lo dibuja como aristas. Solo lo lleva
+`spec.md`; `plan.md`, `tasks.md`, `ux.md` y los RFC no.
+
+```yaml
+---
+id: "NNNN"                     # entre comillas, para conservar los ceros
+title: <feature en una línea>
+type: spec
+status: draft                  # draft | design | approved | implementing | done | done-with-debt | abandoned
+created: YYYY-MM-DD
+closed:                        # fecha de cierre, si aplica
+repos: ["[[repo-renovarte-xxx]]"]          # repos que toca o crea
+domains: ["[[domain-xxx]]"]
+contracts: ["[[contract-xxx]]"]            # contratos que crea, cambia o consume
+providers: ["[[provider-xxx]]"]            # proveedores que suma o usa
+decisions: ["[[ADR-NNNN-slug]]"]           # ADRs existentes que reutiliza o la condicionan
+---
+```
+
+`decisions` sigue la regla de [`docs/decisions/README.md`](../docs/decisions/README.md)
+(cada relación se escribe una sola vez): lista solo los ADRs **previos**
+que la feature reutiliza o que la restringen. Los ADRs que **nacen** en
+la spec ya la nombran en su propio `origin`, así que no se repiten acá.
+Se encuentran por backlinks en Obsidian o con
+`grep -l 'origin:.*NNNN' docs/decisions/ADR-*.md`. El cuerpo de la spec
+repite la lista de `decisions` como links Markdown en
+`## Decisiones relacionadas`.
+
 ## Feature index
 
 | ID | Feature | Repos que toca | Status |

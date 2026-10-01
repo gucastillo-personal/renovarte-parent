@@ -1,3 +1,17 @@
+---
+id: "0016"
+title: Chat recomendador de combos de cremas ("Colibrí")
+type: spec
+status: done-with-debt
+created: 2026-09-21
+closed: 2026-09-30
+repos: ["[[repo-renovarte-catalogo]]", "[[repo-renovarte-chat-gateway]]", "[[repo-renovarte-colibri-rag]]"]
+domains: ["[[domain-colibri]]", "[[domain-catalogo]]"]
+contracts: ["[[contract-chat-envelope]]", "[[contract-connector-invocation]]", "[[contract-products-json]]"]
+providers: ["[[provider-aws]]", "[[provider-anthropic]]", "[[provider-voyage-ai]]", "[[provider-vercel]]"]
+decisions: ["[[ADR-0001-superproyecto-submodulos]]", "[[ADR-0002-catalogo-ssg-sin-backend]]", "[[ADR-0003-ingesta-en-pipeline]]", "[[ADR-0011-aws-terraform-plataforma-runtime]]"]
+---
+
 # 0016 — Chat recomendador de combos ("Colibrí")
 
 **Status:** ✅ Cerrada con deuda (2026-09-30) — desplegada en producción. La verificación independiente de `tester-agent` (2026-09-30) dio NO-GO para darla por verificada al 100 % (sin rollback): AC-3 parcial y un bug del cliente WebSocket con hotfix aparte. La deuda se sigue en el [tablero de deuda técnica](https://claude.ai/artifact/62UfQmiGr14ad6XJVZDbir)
@@ -216,3 +230,16 @@ excepción explícita y acotada al chat al invariante "$0 infraestructura"
 catálogo sigue en $0 sin cambios; no requiere reabrir esta spec, pero la
 fase de RFC debería dejarlo anotado si en algún momento se toca
 `constitution.md` directamente.
+
+## Decisiones relacionadas
+
+ADRs previos que esta feature reutiliza o que la condicionan:
+
+- [ADR-0001](../../docs/decisions/ADR-0001-superproyecto-submodulos.md): los dos repos nuevos son submódulos con su propio `CLAUDE.md`.
+- [ADR-0002](../../docs/decisions/ADR-0002-catalogo-ssg-sin-backend.md): el catálogo sigue estático; de ahí sale RNF-08.
+- [ADR-0003](../../docs/decisions/ADR-0003-ingesta-en-pipeline.md): el chat usa el mismo `products.json`, sin cambios de schema.
+- [ADR-0011](../../docs/decisions/ADR-0011-aws-terraform-plataforma-runtime.md): misma cuenta AWS y mismas convenciones de Terraform y OIDC que `renovarte-events`.
+
+Los ADRs que nacieron en esta spec (0004, 0005, 0012 a 0015 y 0018) la
+nombran en su `origin`:
+`grep -l 'origin:.*0016' docs/decisions/ADR-*.md`.

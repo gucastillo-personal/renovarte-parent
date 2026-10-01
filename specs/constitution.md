@@ -11,6 +11,10 @@ catálogo/pipeline — RFC de arquitectura del root, se queda ahí) y
 [`0001-poc-event-driven-discord/PLAN-EVENTS.md`](./0001-poc-event-driven-discord/PLAN-EVENTS.md)
 (precedente del primer repo nuevo, `renovarte-events`).
 
+El **por qué** de cada invariante está en los ADRs que la justifican
+o la aplican ([`docs/decisions/`](../docs/decisions/README.md)), enlazados
+al final de cada ítem.
+
 Este archivo no repite las invariantes propias de cada repo — ver
 [`renovarte-catalogo/specs/constitution.md`](https://github.com/gucastillo-personal/renovarte-catalogo/blob/main/specs/constitution.md)
 y [`renovarte-pipeline/specs/constitution.md`](https://github.com/gucastillo-personal/renovarte-pipeline/blob/main/specs/constitution.md).
@@ -27,9 +31,11 @@ viven en [`CLAUDE.md`](../CLAUDE.md) y aplican a todos los repos por igual.
    que llegue a ver esos datos (aunque sea de forma transitiva, ej. un
    payload que pasa por un tercer repo) hereda esta invariante sin
    excepción.
+   *Decisiones:* [ADR-0003](../docs/decisions/ADR-0003-ingesta-en-pipeline.md), [ADR-0009](../docs/decisions/ADR-0009-handoff-pipeline-catalogo-por-pr.md), [ADR-0018](../docs/decisions/ADR-0018-products-json-fuente-unica-consumidores.md).
 2. **Ningún secreto (API key, token, credencial) se commitea en ningún
    repo.** Siempre env var / secret de CI, nunca en código ni en docs de
    ejemplo con un valor real.
+   *Decisiones:* [ADR-0010](../docs/decisions/ADR-0010-notificaciones-event-driven.md), [ADR-0011](../docs/decisions/ADR-0011-aws-terraform-plataforma-runtime.md), [ADR-0017](../docs/decisions/ADR-0017-datos-personales-ordenes.md).
 3. **Un repo nuevo nunca invalida una invariante ya cerrada de otro
    repo.** Si una feature cross-repo parece requerir violar una invariante
    de un repo existente (ej. "no runtime backend" de `renovarte-catalogo`
@@ -37,6 +43,7 @@ viven en [`CLAUDE.md`](../CLAUDE.md) y aplican a todos los repos por igual.
    separado que no la viola — no enmendar la invariante existente salvo que
    sea genuinamente inevitable (precedente: spec 0016, resuelto sin
    enmienda vía RNF-08).
+   *Decisiones:* [ADR-0004](../docs/decisions/ADR-0004-runtime-chat-fuera-del-catalogo.md), [ADR-0006](../docs/decisions/ADR-0006-servicio-ordenes.md).
 
 ## II. Architecture
 
@@ -47,19 +54,23 @@ viven en [`CLAUDE.md`](../CLAUDE.md) y aplican a todos los repos por igual.
    encaja limpiamente en la responsabilidad de un repo existente, es señal
    de que necesita su propio repo nuevo, no una excepción al alcance de uno
    existente.
+   *Decisiones:* [ADR-0001](../docs/decisions/ADR-0001-superproyecto-submodulos.md), [ADR-0003](../docs/decisions/ADR-0003-ingesta-en-pipeline.md), [ADR-0004](../docs/decisions/ADR-0004-runtime-chat-fuera-del-catalogo.md).
 5. **$0 infraestructura por defecto, en todo el proyecto.** Cualquier
    excepción (ej. RNF-09: techo de USD 20/mes para la API de un LLM) tiene
    que ser explícita, acotada a la feature que la necesita, y aprobada por
    el CTO/CEO en su propio spec — nunca asumida ni heredada silenciosamente
    por otra feature.
+   *Decisiones:* [ADR-0002](../docs/decisions/ADR-0002-catalogo-ssg-sin-backend.md), [ADR-0005](../docs/decisions/ADR-0005-tope-costo-usd20.md), [ADR-0011](../docs/decisions/ADR-0011-aws-terraform-plataforma-runtime.md).
 6. **Todo repo nuevo es un submódulo de `renovarte-parent`, nunca anidado
    dentro de otro repo.** `git submodule add` desde acá, igual que
    `renovarte-catalogo`/`renovarte-pipeline`/`renovarte-events`.
+   *Decisiones:* [ADR-0001](../docs/decisions/ADR-0001-superproyecto-submodulos.md).
 7. **Todo repo nuevo nace con su propio `CLAUDE.md`**, con las mismas
    reglas de aprobación humana (instalar dependencias, cada commit, cada
    push, nunca mergear PRs, nunca commitear/pushear directo a `main`) que
    ya rigen en el resto del proyecto — no es opcional ni se difiere para
    después.
+   *Decisiones:* [ADR-0001](../docs/decisions/ADR-0001-superproyecto-submodulos.md).
 
 ## III. Spec-Driven Development workflow (cross-repo)
 
@@ -71,6 +82,7 @@ viven en [`CLAUDE.md`](../CLAUDE.md) y aplican a todos los repos por igual.
    que vive enteramente dentro de un solo repo sigue teniendo su
    `specs/NNNN-slug/` en ese repo, como siempre — este archivo no cambia esa
    convención.
+   *Decisiones:* [ADR-0001](../docs/decisions/ADR-0001-superproyecto-submodulos.md).
 9. **La numeración de este `specs/` es propia e independiente** de la
    numeración de `renovarte-catalogo`/`renovarte-pipeline`/cualquier otro
    repo — no hay unicidad global de IDs entre repos (mismo criterio que ya
@@ -88,3 +100,4 @@ viven en [`CLAUDE.md`](../CLAUDE.md) y aplican a todos los repos por igual.
     aprovisionamiento (`terraform apply`, recursos de AWS, etc.) son Fase
     de Implementación, y requieren la misma aprobación humana explícita que
     cualquier instalación de herramientas.
+    *Decisiones:* [ADR-0011](../docs/decisions/ADR-0011-aws-terraform-plataforma-runtime.md).
