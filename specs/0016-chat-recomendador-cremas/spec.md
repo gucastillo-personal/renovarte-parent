@@ -1,6 +1,6 @@
 # 0016 — Chat recomendador de combos ("Colibrí")
 
-**Status:** Backlog
+**Status:** ✅ Cerrada con deuda (2026-09-30) — desplegada en producción. La verificación independiente de `tester-agent` (2026-09-30) dio NO-GO para darla por verificada al 100 % (sin rollback): AC-3 parcial y un bug del cliente WebSocket con hotfix aparte. La deuda se sigue en el [tablero de deuda técnica](https://claude.ai/artifact/62UfQmiGr14ad6XJVZDbir)
 **PRD:** RF-14, RNF-06, RNF-07, RNF-08, RNF-09 (enmienda 2026-09-21,
 precisión 2026-09-21, enmienda 2026-09-21b a
 [PRD-catalogo-renovarte.md](../../renovarte-catalogo/docs/PRD/PRD-catalogo-renovarte.md))
