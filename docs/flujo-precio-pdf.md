@@ -17,7 +17,8 @@ desaparece del catálogo por no estar en el PDF de un mes dado.
 **`pdf-extract`, `ingest` y `transform` son siempre manuales**, corridos
 por el admin en su máquina — la única pieza que corre en CI (GitHub
 Actions) es `publish`, y solo toma el `public/data/products.json` que el
-admin ya generó y commiteó en `renovarte-pipeline`.
+admin ya generó y mergeó a `main` de `renovarte-pipeline`. El por qué
+del handoff está en [ADR-0009](./decisions/ADR-0009-handoff-pipeline-catalogo-por-pr.md).
 
 ```mermaid
 flowchart TD
@@ -40,10 +41,10 @@ flowchart TD
         RESOLVE["build_public_product()<br/>¿matchea contra el PDF?<br/>sí → max(precio ABC, costo+margen) · no → costo+margen"]
         DESCUENTO["descuento de oferta<br/>(si aplica), sobre el precio ya resuelto"]
         PRODJSON[("public/data/products.json<br/>generado · sin costo/margen")]
-        COMMIT{{"Admin revisa el diff<br/>commitea y pushea a renovarte-pipeline"}}
+        COMMIT{{"Admin revisa el diff<br/>PR + merge a main de renovarte-pipeline"}}
     end
 
-    subgraph CI["renovarte-pipeline · GitHub Action (disparo manual)"]
+    subgraph CI["renovarte-pipeline · GitHub Action (push a main que toca products.json)"]
         LEAK["leak_check()<br/>defensa en origen"]
         BRANCH["git: rama + commit<br/>sobre catalogo-checkout"]
         PR["abre/reusa PR<br/>github_api.py"]
@@ -74,9 +75,11 @@ flowchart TD
    `pdf-extract` nunca corren en CI. Esto saca `SERLACA_API_KEY` y el resto
    de la config de Serlaca de los secrets de GitHub (solo hace falta local,
    en `.env.local`); la Action solo necesita `CATALOGO_PAT`.
-2. **`publish` es siempre disparo manual, sin cron** — corre después de que
-   el admin ya commiteó un `products.json` nuevo; si por algún motivo se
-   dispara sin nada nuevo, detecta "sin cambios" y no hace nada.
+2. **`publish` se dispara solo, sin cron** — con cada push a `main` de
+   `renovarte-pipeline` que cambia `public/data/products.json` (es decir,
+   cuando el admin mergea un `products.json` nuevo). `workflow_dispatch`
+   queda como fallback manual; si se dispara sin nada nuevo, detecta "sin
+   cambios" y no hace nada.
 3. **El precio del PDF se aplica antes del descuento de oferta** — si un
    producto matchea contra el PDF *y* está en `offers.json`, el descuento
    se calcula sobre el precio ya resuelto (ABC con piso), no sobre
