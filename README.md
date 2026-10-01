@@ -1,18 +1,21 @@
 # RenovArte — Parent
 
-Superproyecto que agrupa los repos de RenovArte como git submodules. No tiene
-build propio — es solo la base de trabajo para abrir todo junto en el
-editor y ver ingesta + catálogo lado a lado.
+Superproyecto que agrupa los repos de RenovArte como git submodules. No
+tiene build propio: es la base desde la que se trabajan las features que
+tocan más de un repo y donde vive el contexto global del sistema.
 
-- [`renovarte-catalogo`](https://github.com/gucastillo-personal/renovarte-catalogo) —
-  web del catálogo (Next.js, SSG). Solo presentación: lee `public/data/products.json`
-  ya procesado.
-- [`renovarte-pipeline`](https://github.com/gucastillo-personal/renovarte-pipeline) —
-  ingesta y transformación de datos (Python): API Serlaca, CSV, PDF de LACA.
-  Produce el `products.json` que consume el catálogo.
+## Por dónde empezar
 
-Ver [`PLAN.md`](./PLAN.md) para la arquitectura completa, el mapeo de
-migración y las fases de trabajo.
+- [`manifest.yaml`](./manifest.yaml) — qué repos hay, qué hace cada uno,
+  qué contratos los conectan y qué proveedores usan.
+- [`docs/HOME.md`](./docs/HOME.md) — mapa de la documentación (arquitectura,
+  decisiones, specs) y qué documento es fuente de verdad de qué.
+- [`CLAUDE.md`](./CLAUDE.md) — reglas de trabajo (ramas, PRs, aprobaciones
+  humanas) para personas y agentes.
+
+La carpeta es también un vault de Obsidian: abrila como vault para navegar
+el grafo de repos, decisiones y features. Solo se versiona la configuración
+compartida (`.obsidian/app.json`).
 
 ## Setup
 
@@ -26,28 +29,22 @@ Si ya clonaste sin `--recurse-submodules`:
 git submodule update --init --recursive
 ```
 
-Cada submodule tiene su propio README con instrucciones de setup y su
+Cada submódulo tiene su propio README con instrucciones de setup y su
 propio historial/remoto — se commitea y pushea independientemente. Este
 repo solo versiona *a qué commit* apunta cada uno.
 
+Para levantar el chat Colibrí completo en local (catálogo + gateway + RAG,
+sin AWS): `make help`.
+
 ## Flujo de trabajo con agentes
 
-Este repo abre siempre el workspace padre para trabajar con agentes. El
-CTO/CEO da una necesidad y corre `/feature "<necesidad>"`; el skill en
-`.claude/skills/feature/` orquesta tres subagentes (`.claude/agents/`) en
-secuencia, **deteniéndose a pedir aprobación del CTO/CEO entre cada fase**:
+El CTO/CEO da una necesidad y corre `/feature "<necesidad>"`. El skill en
+[`.claude/skills/feature/`](./.claude/skills/feature/SKILL.md) orquesta los
+subagentes de [`.claude/agents/`](./.claude/agents/) por fases —
+product → UX (si toca UI) → diseño → implementación → testing —
+**deteniéndose a pedir aprobación del CTO/CEO entre cada fase**. El detalle
+de cada fase está en el propio skill; el diagrama, en
+[`docs/arquitectura-general.md`](./docs/arquitectura-general.md).
 
-1. **`product-agent`** — necesidad → PRD (`docs/PRD/`) + `spec.md`
-   (acceptance criteria) en el repo (`renovarte-catalogo` y/o
-   `renovarte-pipeline`) que corresponda, siguiendo el spec-kit ya en uso en
-   `renovarte-catalogo/specs/` (y ahora también en `renovarte-pipeline/specs/`).
-2. **`developer-agent`**, modo diseño → RFC (`docs/rfc/`) + `plan.md` +
-   `tasks.md` con estimación.
-3. **`developer-agent`**, modo implementación → código, tareas tildadas,
-   gate del repo (`pnpm gate` / `make check`) verde.
-4. **`tester-agent`** → verifica cada acceptance criterion de forma
-   independiente, re-corre el gate, reporta go/no-go.
-
-El deploy es siempre manual: el CTO/CEO revisa el resultado final y lo
-publica (Vercel para el catálogo, `make publish-live`/merge de PR para el
-pipeline) — ningún agente pushea, mergea ni deploya por su cuenta.
+El deploy es siempre manual: ningún agente pushea a `main`, mergea ni
+deploya por su cuenta.

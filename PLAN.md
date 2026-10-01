@@ -1,5 +1,13 @@
 # Plan de reorganización — RenovArte (parent + submodules)
 
+> **Documento histórico (cerrado 2026-09-14).** Registra cómo y por qué se
+> separó la ingesta del catálogo; no se actualiza más. Para el estado
+> vigente del sistema ver [`manifest.yaml`](./manifest.yaml) (composición)
+> y [`docs/arquitectura-general.md`](./docs/arquitectura-general.md) (cómo
+> funciona). Las decisiones que se tomaron acá se están pasando a ADRs en
+> [`docs/decisions/`](./docs/decisions/README.md); cuando un ADR existe, es
+> la fuente de verdad del "por qué", no este plan.
+
 **Estado:** ✅ completo — las 5 fases hechas y en producción.
 **Fecha:** 2026-09-13. **Cerrado:** 2026-09-14.
 
