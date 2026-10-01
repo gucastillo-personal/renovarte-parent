@@ -92,7 +92,7 @@ repositories:
     providers: [aws]
     docs:
       runbook: docs/runbook.md
-    foundational_decisions: [ADR-0004, ADR-0005, ADR-0011]
+    foundational_decisions: [ADR-0004, ADR-0005, ADR-0011, ADR-0012]
 
   renovarte-colibri-rag:
     path: renovarte-colibri-rag
@@ -108,7 +108,7 @@ repositories:
     providers: [aws, anthropic, voyage-ai, github]
     docs:
       architecture: docs/ARQUITECTURA.md
-    foundational_decisions: [ADR-0004, ADR-0005, ADR-0011]
+    foundational_decisions: [ADR-0004, ADR-0005, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0015]
 
   renovarte-ordenes:
     path: renovarte-ordenes       # todavía no es submódulo (spec 0017, Fase 4)

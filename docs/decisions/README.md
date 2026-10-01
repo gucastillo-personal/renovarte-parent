@@ -85,19 +85,20 @@ agente se detiene y lo reporta — igual que un conflicto con
 | [ADR-0009](./ADR-0009-handoff-pipeline-catalogo-por-pr.md) | Handoff pipeline → catálogo por PR automático; ingesta manual | L2 | Accepted | `PLAN.md` (retroactivo) |
 | [ADR-0010](./ADR-0010-notificaciones-event-driven.md) | Notificaciones event-driven SNS → SQS → Lambda → Discord, best-effort | L3 | Accepted | spec 0001 (retroactivo) |
 | [ADR-0011](./ADR-0011-aws-terraform-plataforma-runtime.md) | AWS + Terraform como plataforma del runtime fuera del catálogo | L3 | Accepted | spec 0001, 0016, 0017 (retroactivo) |
+| [ADR-0012](./ADR-0012-websocket-invocacion-async.md) | Chat por API Gateway WebSocket, invocación async + `postToConnection` | L2 | Accepted | spec 0016 (retroactivo) |
+| [ADR-0013](./ADR-0013-haiku-una-llamada-texto-plantillado.md) | Claude Haiku 4.5, una llamada de extracción por turno, texto plantillado | L3 | Accepted | spec 0016 (retroactivo) |
+| [ADR-0014](./ADR-0014-embeddings-voyage-ai.md) | Embeddings con Voyage AI, calculados en el sync | L3 | Accepted | spec 0016 (retroactivo) |
+| [ADR-0015](./ADR-0015-combos-calculados-en-codigo.md) | Combos y aritmética de presupuesto en código, nunca por el LLM | L2 | Accepted | spec 0016 (retroactivo) |
 
 ### Backfill pendiente (decisiones ya tomadas, todavía sin ADR)
 
 Ya están escritas, en el índice de arriba: las prioritarias (ADR-0001 a
 ADR-0006), el par de precio del PDF (ADR-0007/0008), el handoff
-(ADR-0009), events (ADR-0010) y AWS + Terraform (ADR-0011).
+(ADR-0009), events (ADR-0010), AWS + Terraform (ADR-0011) y los cuatro
+de la 0016 (ADR-0012 a ADR-0015).
 
 Resto (sin número todavía; se numeran cuando se escriban):
 
-- API Gateway WebSocket + invocación async + `postToConnection` (`rfc-transporte-websocket.md` §2-4)
-- Claude Haiku 4.5, una sola llamada por turno, texto plantillado (`rfc-conector-llm-rag.md` §5)
-- Embeddings con Voyage AI (`rfc-conector-llm-rag.md` §3.2)
-- Combos calculados en código, nunca por el LLM (`rfc-conector-llm-rag.md` §4)
 - Entrega de órdenes por doble canal mail + Discord, aceptada con ≥1 canal (`rfc-servicio-ordenes.md` §5)
 - Datos personales de órdenes: seudonimización 90 días, retención 60 días (`rfc-servicio-ordenes.md` §7)
 - El `products.json` publicado es la fuente de catálogo de todos los consumidores (`rfc-conector-llm-rag.md` §2, `rfc-servicio-ordenes.md` §4.2)
