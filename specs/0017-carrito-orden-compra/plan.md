@@ -9,6 +9,38 @@
 > `ux.md` y del contrato de `## Backend`). Toda divergencia entre
 > secciones se documenta y se resuelve antes de implementar.
 
+## Aprobación de la Fase 3 (2026-10-01)
+
+El CTO/CEO aprobó el diseño completo (`## Backend` rev. 2, `## Infra`
+rev. 2, `## Frontend` rev. 2 y `rfc-servicio-ordenes.md` rev. 2) con
+estas propuestas de la gate, que pasan a ser decisiones:
+
+1. **Recarga durante "Enviando…":** la `idempotency_key` del envío en
+   curso se guarda en `sessionStorage` de la pestaña (no solo en memoria),
+   así una recarga a mitad del envío no puede duplicar la orden (AC-24).
+   Cambio para `## Frontend` (F11/F13) a incorporar al implementar.
+2. **Umbrales anti-abuso:** los propuestos en el RFC (20 POST/h, 3 órdenes
+   aceptadas/h y 10/día por IP hasheada; cupo global 50 órdenes/día y
+   1000/mes).
+3. **Kill-switch al 100 % real del Budget:** aceptado; en ese caso extremo
+   el visitante ve la falla genérica en lugar del aviso de tope.
+4. **`Reply-To` del mail:** el email del visitante, para responderle
+   directo desde la casilla.
+5. **Divergencias N1–N4 entre `## Infra` y `## Backend`:** se resuelven a
+   favor de `## Infra` (secretos con `value_wo`, rotación con
+   `config_revision`, latido de `discord-retention` en toda corrida más
+   mecanismo para resolver los `requieren_manual`, logs con
+   `process.stdout.write(JSON.stringify(...))`).
+
+Pendiente antes de producción (no bloquea implementación): texto del aviso
+de privacidad mencionando mail y Discord, y la consulta profesional
+opcional sobre Ley 25.326 (AAIP / transferencia internacional). Pendiente
+al implementar: los 4 textos que `ux.md` no fija (Q-F2), a cargo de
+`ux-agent`.
+
+**La implementación (Fase 4) no está iniciada:** el CTO/CEO decidió
+mergear la spec aprobada y arrancar la implementación más adelante.
+
 ## Backend
 
 **Autor:** `backend-agent`. **Revisión 2 (2026-09-30).** **Repo:**

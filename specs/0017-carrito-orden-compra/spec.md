@@ -1,6 +1,6 @@
 # 0017 — Carrito y orden de compra (catálogo + combos de Colibrí → mail de RenovArte)
 
-**Status:** Backlog
+**Status:** Diseño aprobado (Fase 3, 2026-10-01) — implementación no iniciada
 **PRD:** RF-15, RF-16, RF-17, RF-18, RF-19, RNF-10, RNF-11, RNF-12, RNF-13, RNF-14
 (enmienda 2026-09-30, precisiones 2026-09-30b, 2026-09-30c, 2026-09-30d,
 2026-09-30e y 2026-09-30f a
