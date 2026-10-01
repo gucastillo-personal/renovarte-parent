@@ -202,7 +202,7 @@ repartidas así:
   *Check:* ambos repos confirman por escrito (comentario en PR o nota en
   README) el ARN copiado — sin Terraform remote-state compartido. —
   **Completada 2026-09-29.** Los 2 repos están desplegados de verdad
-  (cuenta AWS 839670623501): `renovarte-chat-gateway` (36 recursos) y
+  (cuenta AWS <ACCOUNT_ID>): `renovarte-chat-gateway` (36 recursos) y
   `renovarte-colibri-rag` (Lambda + IAM, con usuario IAM dedicado
   `renovarte-colibri-rag-terraform`). ARNs reales intercambiados y
   documentados en el README de cada repo; segundo `terraform apply` de

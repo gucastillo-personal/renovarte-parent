@@ -59,9 +59,9 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 - [x] Instalar Terraform CLI (aprobación dada) — `brew tap hashicorp/tap && brew install hashicorp/tap/terraform` (1.16.2; el formula `terraform` se sacó de homebrew-core por la licencia de HashiCorp).
 - [x] `terraform fmt` / `terraform init -backend=false` / `terraform validate` — todo en verde.
 - [x] `terraform apply` (aprobación dada) — **9 recursos creados en AWS** (SNS topic, 2 SQS, IAM role, Lambda, event source mapping). Outputs:
-  - `sns_topic_arn` = `arn:aws:sns:us-east-1:839670623501:renovarte-events-price-changes`
-  - `sqs_queue_url` = `https://sqs.us-east-1.amazonaws.com/839670623501/renovarte-events-price-changes`
-  - `sqs_dlq_url` = `https://sqs.us-east-1.amazonaws.com/839670623501/renovarte-events-price-changes-dlq`
+  - `sns_topic_arn` = `arn:aws:sns:us-east-1:<ACCOUNT_ID>:renovarte-events-price-changes`
+  - `sqs_queue_url` = `https://sqs.us-east-1.amazonaws.com/<ACCOUNT_ID>/renovarte-events-price-changes`
+  - `sqs_dlq_url` = `https://sqs.us-east-1.amazonaws.com/<ACCOUNT_ID>/renovarte-events-price-changes-dlq`
   - `lambda_function_name` = `renovarte-events-consumer`
 - [x] ~~Crear IAM user del producer + access key~~ — reemplazado por **OIDC**: AWS recomendó no usar access keys de larga duración. Se agregó `infra/oidc.tf` (proveedor OIDC de GitHub + rol `renovarte-events-github-actions-producer`, scoped a `sns:Publish` sobre el topic, asumible solo desde `repo:gucastillo-personal/renovarte-pipeline:*`). Aplicado sin errores.
 
@@ -130,7 +130,7 @@ cd renovarte-events/producer
 AWS_PROFILE=renovarte-events AWS_REGION=us-east-1 \
   uv run renovarte-events-producer publish \
     --input ../fixtures/example-price-changes.json \
-    --topic-arn arn:aws:sns:us-east-1:839670623501:renovarte-events-price-changes
+    --topic-arn arn:aws:sns:us-east-1:<ACCOUNT_ID>:renovarte-events-price-changes
 ```
 Y en CI: `gh workflow run publish.yml --repo gucastillo-personal/renovarte-pipeline --ref <rama>`.
 
