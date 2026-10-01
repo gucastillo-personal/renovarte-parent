@@ -91,14 +91,10 @@ agente se detiene y lo reporta — igual que un conflicto con
 | [ADR-0015](./ADR-0015-combos-calculados-en-codigo.md) | Combos y aritmética de presupuesto en código, nunca por el LLM | L2 | Accepted | spec 0016 (retroactivo) |
 | [ADR-0016](./ADR-0016-ordenes-doble-canal.md) | Órdenes por doble canal mail + Discord, aceptadas con ≥1, idempotencia por canal | L3 | Accepted | spec 0017 (retroactivo) |
 | [ADR-0017](./ADR-0017-datos-personales-ordenes.md) | Datos personales de órdenes: en memoria, registro seudonimizado 90 días, borrado a 60 | L3 | Accepted | spec 0017 (retroactivo) |
+| [ADR-0018](./ADR-0018-products-json-fuente-unica-consumidores.md) | `products.json` publicado como fuente única de todos los consumidores | L2 | Accepted | spec 0016, 0017 (retroactivo) |
 
-### Backfill pendiente (decisiones ya tomadas, todavía sin ADR)
+### Backfill
 
-Ya están escritas, en el índice de arriba: las prioritarias (ADR-0001 a
-ADR-0006), el par de precio del PDF (ADR-0007/0008), el handoff
-(ADR-0009), events (ADR-0010), AWS + Terraform (ADR-0011), los cuatro
-de la 0016 (ADR-0012 a ADR-0015) y los dos de la 0017 (ADR-0016/0017).
-
-Resto (sin número todavía; se numeran cuando se escriban):
-
-- El `products.json` publicado es la fuente de catálogo de todos los consumidores (`rfc-conector-llm-rag.md` §2, `rfc-servicio-ordenes.md` §4.2)
+Completo: todas las decisiones ya tomadas antes de esta base de
+conocimiento tienen ADR (ADR-0001 a ADR-0018, todos `retroactive: true`).
+Las decisiones nuevas se registran en la Fase 3 de `/feature`.
