@@ -76,7 +76,7 @@ repositories:
     providers: [aws, discord]
     docs:
       runbook: docs/runbook.md
-    foundational_decisions: [ADR-0010]
+    foundational_decisions: [ADR-0010, ADR-0011]
 
   renovarte-chat-gateway:
     path: renovarte-chat-gateway
@@ -92,7 +92,7 @@ repositories:
     providers: [aws]
     docs:
       runbook: docs/runbook.md
-    foundational_decisions: [ADR-0004, ADR-0005]
+    foundational_decisions: [ADR-0004, ADR-0005, ADR-0011]
 
   renovarte-colibri-rag:
     path: renovarte-colibri-rag
@@ -108,7 +108,7 @@ repositories:
     providers: [aws, anthropic, voyage-ai, github]
     docs:
       architecture: docs/ARQUITECTURA.md
-    foundational_decisions: [ADR-0004, ADR-0005]
+    foundational_decisions: [ADR-0004, ADR-0005, ADR-0011]
 
   renovarte-ordenes:
     path: renovarte-ordenes       # todavía no es submódulo (spec 0017, Fase 4)
@@ -122,7 +122,7 @@ repositories:
     deploy: terraform (manual)
     domains: [ordenes]
     providers: [aws, discord]
-    foundational_decisions: [ADR-0005, ADR-0006]
+    foundational_decisions: [ADR-0005, ADR-0006, ADR-0011]
 
 contracts:
   products-json:

@@ -84,16 +84,16 @@ agente se detiene y lo reporta — igual que un conflicto con
 | [ADR-0008](./ADR-0008-precio-pdf-automatico-piso-margen.md) | Precio ABC del PDF automático, con piso de costo+margen | L2 | Accepted | `PLAN.md` (retroactivo) |
 | [ADR-0009](./ADR-0009-handoff-pipeline-catalogo-por-pr.md) | Handoff pipeline → catálogo por PR automático; ingesta manual | L2 | Accepted | `PLAN.md` (retroactivo) |
 | [ADR-0010](./ADR-0010-notificaciones-event-driven.md) | Notificaciones event-driven SNS → SQS → Lambda → Discord, best-effort | L3 | Accepted | spec 0001 (retroactivo) |
+| [ADR-0011](./ADR-0011-aws-terraform-plataforma-runtime.md) | AWS + Terraform como plataforma del runtime fuera del catálogo | L3 | Accepted | spec 0001, 0016, 0017 (retroactivo) |
 
 ### Backfill pendiente (decisiones ya tomadas, todavía sin ADR)
 
 Ya están escritas, en el índice de arriba: las prioritarias (ADR-0001 a
 ADR-0006), el par de precio del PDF (ADR-0007/0008), el handoff
-(ADR-0009) y events (ADR-0010).
+(ADR-0009), events (ADR-0010) y AWS + Terraform (ADR-0011).
 
 Resto (sin número todavía; se numeran cuando se escriban):
 
-- AWS + Terraform como plataforma de runtime fuera del catálogo (implícito en events, 0016, 0017)
 - API Gateway WebSocket + invocación async + `postToConnection` (`rfc-transporte-websocket.md` §2-4)
 - Claude Haiku 4.5, una sola llamada por turno, texto plantillado (`rfc-conector-llm-rag.md` §5)
 - Embeddings con Voyage AI (`rfc-conector-llm-rag.md` §3.2)
