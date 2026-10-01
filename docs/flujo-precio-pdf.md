@@ -2,12 +2,16 @@
 
 Diagrama de todo el camino de datos, desde el PDF de precios de LACA hasta
 el `precio_venta` que se ve en `renovarte-catalogo`. Para acompañar el
-análisis de la Fase 2/3 del [`PLAN.md`](./PLAN.md).
+análisis de la Fase 2/3 del [`PLAN.md`](../PLAN.md). El por qué de este
+modelo está en [ADR-0008](./decisions/ADR-0008-precio-pdf-automatico-piso-margen.md).
 
 **El PDF es la fuente primaria de precio, automática dentro de
-`transform` — no hay revisión manual por producto.** El precio ABC del PDF
-se aplica directo a todo código que matchea; sin match (o sin ABC en el
-PDF) el producto sigue con costo+margen, igual que siempre. Nada
+`transform` — no hay revisión manual por producto.** A todo código que
+matchea se le aplica el precio ABC del PDF **con piso de margen**:
+`precio_venta = max(precio_abc, costo × (1 + margen))`, porque en ~1 de
+cada 3 productos reales el ABC es igual al costo de RenovArte. Sin match
+(o sin ABC en el PDF), el producto sigue con costo+margen, igual que
+siempre. Nada
 desaparece del catálogo por no estar en el PDF de un mes dado.
 
 **`pdf-extract`, `ingest` y `transform` son siempre manuales**, corridos
@@ -33,7 +37,7 @@ flowchart TD
         TRANSFORM["transform<br/>build_catalog.py"]
         LOADPDF["load_pdf_prices()<br/>lee REFCSV, codigo→precio_abc"]
         MARGEN["resolve_margin()<br/>env MARGIN_PERCENT_*"]
-        RESOLVE["build_public_product()<br/>¿matchea contra el PDF?<br/>sí → precio ABC · no → costo+margen"]
+        RESOLVE["build_public_product()<br/>¿matchea contra el PDF?<br/>sí → max(precio ABC, costo+margen) · no → costo+margen"]
         DESCUENTO["descuento de oferta<br/>(si aplica), sobre el precio ya resuelto"]
         PRODJSON[("public/data/products.json<br/>generado · sin costo/margen")]
         COMMIT{{"Admin revisa el diff<br/>commitea y pushea a renovarte-pipeline"}}
@@ -75,7 +79,8 @@ flowchart TD
    dispara sin nada nuevo, detecta "sin cambios" y no hace nada.
 3. **El precio del PDF se aplica antes del descuento de oferta** — si un
    producto matchea contra el PDF *y* está en `offers.json`, el descuento
-   se calcula sobre el precio ABC, no sobre costo+margen.
+   se calcula sobre el precio ya resuelto (ABC con piso), no sobre
+   costo+margen.
 4. Hay **dos puntos con costo** en la cadena (`laca_pdf_raw.json`,
    `serlaca-raw.json`) — ambos gitignored, ambos solo tocados en la
    máquina del admin — más el costo implícito en la etapa de margen para
