@@ -1,0 +1,11 @@
+# Archivos temporales de editores
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Obsidian: el vault es la raíz de este repo. Solo se versiona la
+# configuración compartida (formato de links, archivos excluidos); el
+# estado personal (workspace, plugins, caché) queda fuera.
+.obsidian/*
+!.obsidian/app.json
