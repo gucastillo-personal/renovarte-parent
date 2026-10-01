@@ -1,3 +1,17 @@
+---
+id: "0001"
+title: POC event-driven — notificación de cambios de precio por Discord
+type: spec
+status: done
+created: 2026-09-16
+closed: 2026-09-16
+repos: ["[[repo-renovarte-events]]", "[[repo-renovarte-pipeline]]"]
+domains: ["[[domain-notificaciones]]", "[[domain-precios]]"]
+contracts: ["[[contract-price-change-event]]"]
+providers: ["[[provider-aws]]", "[[provider-discord]]", "[[provider-github]]"]
+decisions: ["[[ADR-0001-superproyecto-submodulos]]", "[[ADR-0003-ingesta-en-pipeline]]", "[[ADR-0009-handoff-pipeline-catalogo-por-pr]]"]
+---
+
 # Plan — POC event-driven: notificación de cambios de precio
 
 **Estado:** ✅ completo — flujo end-to-end verificado en producción (CI real).
@@ -140,3 +154,14 @@ Y en CI: `gh workflow run publish.yml --repo gucastillo-personal/renovarte-pipel
 - Revisar y mergear el PR #6 de `renovarte-catalogo` (el cambio de precio real que destapó esta verificación).
 - Opcional: probar el camino de la DLQ (Fase 6, ítem opcional).
 - Opcional: destruir la infra (`terraform destroy`, con aprobación) si en algún momento se quiere desarmar el POC.
+
+## Decisiones relacionadas
+
+ADRs previos que este POC reutiliza o que lo condicionan:
+
+- [ADR-0001](../../docs/decisions/ADR-0001-superproyecto-submodulos.md): `renovarte-events` es un submódulo nuevo con su propio `CLAUDE.md`.
+- [ADR-0003](../../docs/decisions/ADR-0003-ingesta-en-pipeline.md): el pipeline calcula el diff de precios, pero no se le suma AWS.
+- [ADR-0009](../../docs/decisions/ADR-0009-handoff-pipeline-catalogo-por-pr.md): el evento sale como pasos best-effort de `publish.yml`.
+
+Los ADRs que nacieron en este POC (0010 y 0011) lo nombran en su
+`origin`: `grep -l 'origin:.*0001-poc' docs/decisions/ADR-*.md`.
