@@ -24,7 +24,9 @@ backend ni base de datos, con costo de infraestructura $0.
   su lógica corre en otros repos:
   [chat-gateway](./repo-renovarte-chat-gateway.md),
   [colibri-rag](./repo-renovarte-colibri-rag.md) y
-  [ordenes](./repo-renovarte-ordenes.md).
+  [ordenes](./repo-renovarte-ordenes.md). El sitio es un cliente de esos
+  servicios desde el navegador, configurado con URLs públicas
+  `NEXT_PUBLIC_*` (nunca secretos).
 
 ## Documentos
 
