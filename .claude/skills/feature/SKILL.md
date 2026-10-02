@@ -196,8 +196,10 @@ yourself — you have the full context of the run. Touch only what changed:
 6. **L1 decisions** (`D-NNNN-n`) that another repo or feature now depends on
    get promoted to an ADR.
 
-Post the list of files changed and a one-line summary of each. **Wait for
-approval.** Committing and pushing these changes follows `CLAUDE.md`: a
+Run `make docs-check` from the root and fix every error it reports
+(warnings for specs or submodules not present in this checkout are
+expected). Post the list of files changed, a one-line summary of each, and
+the `docs-check` result. **Wait for approval.** Committing and pushing these changes follows `CLAUDE.md`: a
 dedicated branch, a PR, and explicit approval for each commit and each push.
 
 ## After phase 6 — this skill's job is done
