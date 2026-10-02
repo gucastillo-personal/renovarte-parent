@@ -56,3 +56,14 @@ Las reglas de flujo de trabajo (ramas, PRs, aprobaciones humanas) están en
 
 Si dos documentos dicen lo mismo, uno de los dos sobra: el que no es fuente
 de verdad tiene que linkear, no repetir.
+
+## Validación
+
+`make docs-check` (desde la raíz; solo lectura, sin dependencias) revisa
+que los links relativos y los wikilinks resuelvan, el frontmatter de ADRs y
+specs, las relaciones de supersede, el índice de ADRs, que cada entrada de
+`manifest.yaml` tenga su nota (y que no haya notas huérfanas), y que no se
+publiquen IDs de cuenta AWS ni URLs de webhooks. Falla con errores; avisa
+(sin fallar) cuando algo vive en una spec sin mergear o en un submódulo sin
+inicializar. Se corre en la Fase 6 de `/feature`. Código:
+[`scripts/docs-check.rb`](../scripts/docs-check.rb).
