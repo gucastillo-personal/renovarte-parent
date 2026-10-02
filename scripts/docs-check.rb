@@ -1,14 +1,21 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# docs-check — valida la base de conocimiento de renovarte-parent (solo lectura).
+# docs-check — valida la base de conocimiento de un proyecto agentic-sdd
+# (solo lectura).
 #
 # Chequea links relativos, wikilinks, frontmatter de ADRs y specs, la
 # consistencia de manifest.yaml con las notas de docs/, las relaciones de
 # supersede, el índice de ADRs y que no se publiquen IDs de cuenta AWS ni
 # URLs de webhooks. Usa solo la biblioteca estándar de Ruby: no instala nada.
 #
-# Uso: make docs-check   (o ruby scripts/docs-check.rb desde la raíz)
+# Uso, desde la raíz del proyecto:
+#   make docs-check                       (copia vendorizada en scripts/)
+#   ruby scripts/docs-check.rb [raíz]     (por defecto, el directorio actual)
+#
+# Viene del plugin agentic-sdd; cada proyecto lleva una copia para que corra
+# sin el plugin (por ejemplo, en CI). VERSION dice de qué versión del plugin
+# salió: /agentic-sdd:docs-check avisa si la copia quedó vieja.
 # Sale con código 1 si hay errores. Las advertencias no fallan: cubren
 # referencias a submódulos sin inicializar o a repos todavía `planned`.
 
@@ -16,12 +23,22 @@ require 'yaml'
 require 'date'
 require 'set'
 
-ROOT = File.expand_path('..', __dir__)
+VERSION = '0.1.0'
+
+ROOT = File.expand_path(ARGV[0] || Dir.pwd)
 Dir.chdir(ROOT)
 
-MANIFEST = YAML.safe_load(File.read('manifest.yaml'), permitted_classes: [Date])
-REPOS = MANIFEST.fetch('repositories')
-SUBMODULE_DIRS = REPOS.values.map { |r| r['path'] }.compact
+unless File.exist?('manifest.yaml')
+  warn "docs-check: no hay manifest.yaml en #{ROOT}. Corré el chequeo desde la raíz " \
+       'del proyecto, o creá la base de conocimiento con /agentic-sdd:bootstrap-proyecto.'
+  exit 1
+end
+
+MANIFEST = YAML.safe_load(File.read('manifest.yaml'), permitted_classes: [Date]) || {}
+REPOS = MANIFEST['repositories'] || {}
+# Repos que viven en su propio directorio (submódulos). En un proyecto de un
+# solo repo el path es "." y no hay nada que excluir.
+SUBMODULE_DIRS = REPOS.values.map { |r| r['path'] }.compact.reject { |p| ['.', './', ''].include?(p) }
 
 ADR_STATUSES = %w[Proposed Accepted Superseded Deprecated].freeze
 ADR_LEVELS = %w[L2 L3].freeze
@@ -108,8 +125,11 @@ def check_links
     next if File.basename(f) == '_template.md'
 
     text = File.read(f)
-    fm, = split_frontmatter(text)
-    body = strip_code(text)
+    # Los wikilinks del frontmatter salen del YAML parseado (así los
+    # comentarios de ejemplo de las plantillas no cuentan); el texto se
+    # escanea solo en el cuerpo.
+    fm, raw_body = split_frontmatter(text)
+    body = strip_code(raw_body)
 
     body.scan(/\]\(([^)\s]+)\)/).flatten.each do |link|
       next if link.match?(%r{\A(?:[a-z]+:|#|/)})
@@ -250,8 +270,8 @@ def check_note(kind, name, owner)
 end
 
 def check_manifest(adrs)
-  providers = MANIFEST.fetch('providers').keys
-  contracts = MANIFEST.fetch('contracts')
+  providers = (MANIFEST['providers'] || {}).keys
+  contracts = MANIFEST['contracts'] || {}
 
   REPOS.each do |name, r|
     owner = "repositories.#{name}"
@@ -317,6 +337,6 @@ check_leaks
 
 @warnings.each { |w| puts "⚠ #{w}" }
 @errors.each { |e| puts "✗ #{e}" }
-puts "docs-check: #{MD_FILES.size} archivos, #{adrs.size} ADRs — " \
+puts "docs-check #{VERSION}: #{MD_FILES.size} archivos, #{adrs.size} ADRs — " \
      "#{@errors.size} errores, #{@warnings.size} advertencias"
 exit(@errors.empty? ? 0 : 1)

@@ -38,13 +38,18 @@ sin AWS): `make help`.
 
 ## Flujo de trabajo con agentes
 
-El CTO/CEO da una necesidad y corre `/feature "<necesidad>"`. El skill en
-[`.claude/skills/feature/`](./.claude/skills/feature/SKILL.md) orquesta los
-subagentes de [`.claude/agents/`](./.claude/agents/) por fases —
+El CTO/CEO da una necesidad y corre `/agentic-sdd:feature "<necesidad>"`.
+El flujo y sus agentes vienen del plugin privado
+[`agentic-sdd`](https://github.com/gucastillo-personal/agentic-sdd),
+habilitado para este repo en [`.claude/settings.json`](./.claude/settings.json)
+(quien abra el repo y confíe en la carpeta lo recibe; hace falta acceso de
+lectura al repo del plugin y credenciales de git guardadas). Orquesta los
+subagentes `agentic-sdd:*` por fases —
 product → UX (si toca UI) → diseño → implementación → testing —
 **deteniéndose a pedir aprobación del CTO/CEO entre cada fase**. El detalle
 de cada fase está en el propio skill; el diagrama, en
 [`docs/arquitectura-general.md`](./docs/arquitectura-general.md).
 
 El deploy es siempre manual: ningún agente pushea a `main`, mergea ni
-deploya por su cuenta.
+deploya por su cuenta. El plugin trae además un hook que bloquea
+técnicamente `gh pr merge` y el push a `main`.

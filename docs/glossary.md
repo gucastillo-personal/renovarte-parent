@@ -76,5 +76,5 @@ código. Cada definición es corta y linkea a la nota que lo explica.
 | **ADR** | Registro de una decisión y su por qué. Ver [decisions](./decisions/README.md) |
 | **L0–L3** | Nivel de una decisión, que define si necesita ADR. Ver [decisions](./decisions/README.md#qué-va-a-adr-y-qué-no) |
 | **Constitution** | Invariantes no negociables: [root](../specs/constitution.md) y una por repo |
-| **Gate** | Aprobación humana explícita entre fases de `/feature` |
+| **Gate** | Aprobación humana explícita entre fases de `/agentic-sdd:feature` |
 | **Manifest** | [`manifest.yaml`](../manifest.yaml): composición del sistema |
