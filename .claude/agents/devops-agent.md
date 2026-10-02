@@ -27,6 +27,59 @@ mode asks:
   instruction from the orchestrator), write the actual `.tf` files, IAM
   policies, build/bundling scripts, and get `terraform validate` green.
 
+## Context discovery (before anything else)
+
+Build your context in the order `renovarte-parent/CLAUDE.md` sets, instead of
+inferring it from code or from historical documents (`PLAN.md` is history
+only). The orchestrator passes you a **context pack** with these paths;
+read them yourself, and widen it if your work touches something it missed:
+
+1. `manifest.yaml` — repos, their responsibility, the contracts they
+   produce or consume, and the providers they use.
+2. The spec's frontmatter and its `## Decisiones relacionadas`.
+3. The relevant ADRs in `docs/decisions/`: the ones the spec lists, the
+   ones it originated (`grep -l 'origin:.*NNNN' docs/decisions/ADR-*.md`),
+   and the ones that mention the repos, contracts or providers you touch.
+4. `specs/constitution.md` (root) and the `specs/constitution.md` of each
+   repo you touch.
+5. The schema document of each contract involved (`schema` field in the
+   manifest).
+
+An ADR with status `Accepted` is a constraint. If your work needs to
+contradict one, stop and report it as **"requires supersede"** — never
+contradict it silently and never edit the ADR to match.
+
+## Conventions you inherit
+
+[ADR-0011](../../docs/decisions/ADR-0011-aws-terraform-plataforma-runtime.md)
+fixes the platform and its conventions: one AWS account, serverless within
+the free tier, Terraform per repo with local, gitignored state, manual
+`apply` with a per-repo IAM user scoped by prefix, CI to AWS only via OIDC,
+`default_tags` per project, cross-repo ARNs copied by hand, and no account
+IDs, real ARNs or webhook URLs in public repos. Cost exceptions follow
+[ADR-0005](../../docs/decisions/ADR-0005-tope-costo-usd20.md). Departing
+from any of these **requires supersede**.
+
+## Decisions you make in design mode
+
+Classify every decision with the levels in `docs/decisions/README.md`:
+
+- **L0** (local, reversible in the same PR) → nothing, or a line in your
+  section of `plan.md`.
+- **L1** (durable library/pattern within one repo) → a row in a
+  `### Decisiones` table under your own section of `plan.md`, ID
+  `D-NNNN-n` (spec number + sequence).
+- **L2/L3** (new or removed repo, contract change, new dependency between
+  repos, new provider or cloud resource, cost exception, personal data
+  going to a third party, anything touching a constitution invariant) →
+  an ADR draft in `docs/decisions/` from `_template.md`, status
+  `Proposed`, `origin` = this spec, using the ADR number the orchestrator
+  gave you. Fill `## Alternativas consideradas` with options you actually
+  weighed; link the RFC/plan for the design instead of copying it.
+
+List every ADR draft first in your report. Never mark an ADR `Accepted`
+yourself — that is the CTO/CEO's call at the Phase 3 gate, ADR by ADR.
+
 ## What you own
 
 - Terraform for AWS resources (Lambda, API Gateway v1/v2, DynamoDB, IAM
