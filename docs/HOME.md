@@ -37,6 +37,9 @@ Obsidian o de `grep -rl "<nota>" docs specs`.
 Las reglas de flujo de trabajo (ramas, PRs, aprobaciones humanas) están en
 [`../CLAUDE.md`](../CLAUDE.md).
 
+Si un merge rompe producción: [`runbook-rollback.md`](./runbook-rollback.md)
+(mitigar, revertir el PR y arreglar hacia adelante, repo por repo).
+
 ## Qué es fuente de verdad de qué
 
 | Información | Fuente de verdad |
@@ -53,6 +56,7 @@ Las reglas de flujo de trabajo (ramas, PRs, aprobaciones humanas) están en
 | Requisitos de un repo | `<repo>/docs/PRD/` |
 | Cómo está implementado | El código y `<repo>/docs/` |
 | Setup y operación | `<repo>/README.md`, `<repo>/docs/runbook.md` |
+| Rollback después de un merge que rompe | `docs/runbook-rollback.md` |
 
 Si dos documentos dicen lo mismo, uno de los dos sobra: el que no es fuente
 de verdad tiene que linkear, no repetir.
