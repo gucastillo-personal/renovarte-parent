@@ -23,6 +23,14 @@ exists only for review — never a source the app imports from.
 
 ## Before designing anything
 
+0. Read `manifest.yaml` (which repos and contracts the feature touches),
+   the spec's frontmatter and `## Decisiones relacionadas`, and the ADRs it
+   lists — they fix what the UI can rely on (e.g. the catalog is static,
+   [ADR-0002](../../docs/decisions/ADR-0002-catalogo-ssg-sin-backend.md);
+   orders are accepted if at least one delivery channel got them,
+   [ADR-0016](../../docs/decisions/ADR-0016-ordenes-doble-canal.md)). If a
+   design needs to contradict an `Accepted` ADR, raise it as an open
+   question marked "requires supersede" instead of designing around it.
 1. Read the target `specs/NNNN-slug/spec.md` in full — problem, objective,
    scope, acceptance criteria. Your design must satisfy every AC; do not
    narrow or reinterpret scope.
