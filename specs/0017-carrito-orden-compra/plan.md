@@ -9,6 +9,34 @@
 > `ux.md` y del contrato de `## Backend`). Toda divergencia entre
 > secciones se documenta y se resuelve antes de implementar.
 
+## Enmienda 2026-10-05 — recorte de datos personales del MVP
+
+> **Rige sobre el resto de este plan.** La CEO de RenovArte pidió que el
+> formulario pida **solo teléfono** y que RenovArte comparta el suyo
+> (1130579528) para coordinar pago y envío (`spec.md`, precisión
+> 2026-10-05). Consecuencias, que **prevalecen sobre lo que diga cualquier
+> sección de abajo**:
+>
+> 1. **Contrato:** `contacto = { telefono }`. Sin `nombre`, `email`,
+>    `direccion`, `localidad`, `contacto_requerido` ni los campos
+>    `contacto.*` extra de `CampoOrden` (RFC §3.2, revisión 3).
+> 2. **Retirado:** todo lo referido a `discord-retention`, al bucket y
+>    cursor `BORRAR#`, a `borrado_no_programado`, a `retencion_discord`,
+>    a AC-29 y AC-31 (borrado a 60 días), al aviso de privacidad (#E / #9)
+>    y al `Reply-To` del mail. Quedan **2 Lambdas** (`orders-http` y
+>    `budget-guard`) y **2 alarmas** (flood y canal degradado). Las tareas
+>    B23 e I19 están retiradas en `tasks.md`.
+> 3. **Se mantiene:** canal solo para propietarios (AC-30), webhook como
+>    secreto (AC-26), registro seudonimizado de 90 días (AC-27), logs sin
+>    contacto (AC-18) y confirmación en `sessionStorage` (AC-28), ahora
+>    con **solo el teléfono**.
+> 4. **Frontend:** `OrderForm` con un único campo, `ContactChannels` con
+>    el teléfono de RenovArte además de email e Instagram.
+>
+> Las secciones `## Backend` e `## Infra` de abajo **no se reescribieron**
+> línea por línea: donde mencionan lo retirado, valen la enmienda y el RFC
+> revisión 3. `## Frontend` sí está ajustada.
+
 ## Aprobación de la Fase 3 (2026-10-01)
 
 El CTO/CEO aprobó el diseño completo (`## Backend` rev. 2, `## Infra`
@@ -469,7 +497,7 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
    - Estados: `editando` → `enviando` → `confirmada` | `fallida` | `tope`
      | `rechazada_por_catalogo` | `invalida`.
    - **`idempotency_key`:** se guarda junto con la huella canónica del
-     payload (líneas, cantidades, `precio_visto`, total y contacto
+     payload (líneas, cantidades, `precio_visto`, total y teléfono
      normalizado). "Enviar" o "Reintentar" con la misma huella **reusa**
      la key. Con cualquier cambio, incluida la aplicación de precios
      después de un `rechazada_por_catalogo`, se genera una **nueva** con
@@ -486,7 +514,7 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
        falla genérica; el "Reintentar" posterior reusa la key.
      - Límite conocido, sin decisión pendiente: si el visitante recarga
        **durante** "Enviando…", la key en memoria se pierde (RFC §5.1). Al
-       volver tiene que retipear nombre y dirección (AC-28 no los guarda),
+       volver tiene que retipear el teléfono (AC-28 no lo guarda),
        así que el reenvío es un envío nuevo con key nueva. La ventana es
        de pocos segundos y ux.md ya pide "No cierres esta página". Queda
        documentado como riesgo, no se agrega persistencia.
@@ -520,8 +548,7 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
    - Se escribe **solo** después de `aceptada`, nunca mientras se edita
      el formulario. Proyección por allowlist, nunca spread:
      `{ numero_orden, lineas: [{nombre, presentacion, cantidad,
-     precio}], total, email?, telefono? }`. **Nunca** nombre, dirección
-     ni localidad.
+     precio}], total, telefono }`. **Nunca** otro dato de contacto.
    - Se borra cuando la ruta deja de ser `/carrito`:
      - navegación dentro del sitio: el `CartProvider` lo hace al cambiar
        `usePathname()`;
@@ -579,8 +606,8 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 
 | Archivo | Responsabilidad |
 |---|---|
-| `src/lib/contact.ts` | Constantes `RENOVARTE_EMAIL`, `INSTAGRAM_USER`, `INSTAGRAM_DM_URL` (`https://ig.me/m/renovarte_by_juli`) y un helper `mailtoConsulta(numero)`. Única fuente para confirmación, banners y `noscript` |
-| `src/lib/orders/wire.ts` | Copia literal de `src/wire.ts` de `renovarte-ordenes` (B3, RFC §3 rev. 2: `lineas` 1..100), con comentario `v: 1` y la fuente, más guards de runtime `isEstadoResponse` / `isCrearOrdenResponse` (mismo estilo que `src/lib/chat/types.ts`) |
+| `src/lib/contact.ts` | Constantes `RENOVARTE_EMAIL`, `RENOVARTE_TELEFONO` (`1130579528`, enmienda 2026-10-05), `INSTAGRAM_USER`, `INSTAGRAM_DM_URL` (`https://ig.me/m/renovarte_by_juli`), `telefonoHref()` y un helper `mailtoConsulta(numero)`. Única fuente para confirmación, banners y `noscript` |
+| `src/lib/orders/wire.ts` | Copia literal de `src/wire.ts` de `renovarte-ordenes` (B3, RFC §3 rev. 3: `lineas` 1..100, `contacto = { telefono }`), con comentario `v: 1` y la fuente, más guards de runtime `isEstadoResponse` / `isCrearOrdenResponse` (mismo estilo que `src/lib/chat/types.ts`) |
 | `src/lib/orders/client.ts` | `fetchEstado()` y `crearOrden()` con puertos inyectados; timeout de 15 s; normalización a `OrderOutcome` (decisión 5) |
 | `src/lib/orders/checkout.ts` | Reducer puro del envío, huella del payload, guard de doble envío y reglas de `idempotency_key` y `form_token` con espera mínima de 3,5 s (decisiones 6 y 7) |
 | `src/lib/orders/confirmation-store.ts` | Guardar / leer / borrar la confirmación en un `Storage` inyectable, con proyección por allowlist (AC-28, decisión 9) |
@@ -600,10 +627,10 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 | `src/components/cart/CartEmpty.tsx` | Bloque punteado, "Ver catálogo" y "Pedile un combo a Colibrí" (`openChat`) |
 | `src/components/cart/CartNotice.tsx` | Aviso neutro `sage-50` `role="status"`: revalidación, precios actualizados al enviar y tope al entrar |
 | `src/components/cart/CartSummary.tsx` | Total y "No se cobra nada en este paso…" |
-| `src/components/orders/OrderForm.tsx` | "Tus datos": campos, `fieldset` de contacto, hints y errores con `aria-describedby`, `novalidate`, honeypot, aviso de privacidad, "Enviar orden" y estado "Enviando…" con `readonly` |
+| `src/components/orders/OrderForm.tsx` | "Tu teléfono": un solo campo, hint y error con `aria-describedby`, `novalidate`, honeypot, sin aviso de privacidad (retirado), "Enviar orden" y estado "Enviando…" con `readonly` |
 | `src/components/orders/FormErrorSummary.tsx` | Resumen de errores enfocable; cada ítem es un botón que enfoca su campo |
 | `src/components/orders/OrderSendBanner.tsx` | `role="alert"`, variantes falla (con "Reintentar envío") y tope (sin "Reintentar"), canales y "Copiar detalle del pedido" |
-| `src/components/orders/ContactChannels.tsx` | Email con `mailto:` más "Copiar", e Instagram MD con `target="_blank" rel="noopener"` |
+| `src/components/orders/ContactChannels.tsx` | Teléfono de RenovArte con `tel:` más "Copiar", email con `mailto:` más "Copiar", e Instagram MD con `target="_blank" rel="noopener"` |
 | `src/components/orders/CopyButton.tsx` | Portapapeles con label temporal ("Copiado" por 1,6 s, timer inyectable). Si falla: selecciona el texto o usa un `textarea` readonly |
 | `src/components/orders/OrderConfirmation.tsx` | Número, "Qué sigue", canales, "Lo que pediste" y "Volver al catálogo"; foco en el `h1` |
 | `src/components/chat/ChatComboAddToCart.tsx` | Client. Botón "Agregar combo al carrito" / "Agregar otra vez" (mismo nodo), confirmación "✓ Agregaste…" y link "Ver carrito" |
@@ -636,7 +663,7 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 | `GET estado` → `no_disponible` o error (al renovar el token antes de enviar) | Banner "Tu orden no se envió" (falla genérica) | Banner | Intactos |
 | `POST` → `aceptada` (201 primera vez / 200 reintento idempotente; "al menos un canal confirmó", invisible para el visitante) | Confirmación con `numero_orden` | `h1` | Carrito vaciado; confirmación en `sessionStorage` (allowlist de AC-28) |
 | `POST` → `rechazada_por_catalogo` | Precios actualizados y líneas no disponibles; aviso "Los precios se actualizaron mientras completabas tus datos…" | Aviso | Líneas actualizadas (el total se recalcula localmente; `total_vigente` coincide por contrato, Q-F6 cerrada; si difiere, gana el local y el servidor revalida); formulario intacto; la próxima key es nueva |
-| `POST` → `invalida` con `campo` de `contacto.*` / `contacto` | Errores por campo + resumen, con el copy de ux.md por campo | Resumen | Intactos |
+| `POST` → `invalida` con `campo` `contacto.telefono` | Error del teléfono + resumen, con el copy de ux.md | Resumen | Intactos |
 | `POST` → `invalida` `form_token` / `token_vencido` (vencido o < 3 s) | **No visible**: token nuevo, espera de 3,5 s y 1 reintento con la misma key | — | — |
 | `POST` → `invalida` sin campo mapeable (`lineas`, `total_visto`, `null`, `errores: []`, u otro problema de token) | Error general arriba del formulario (copy: Q-F2) | Error general | Intactos |
 | `POST` → `tope_alcanzado` | Banner de tope, sin "Reintentar", con canales y "Copiar detalle" | Banner | Intactos |
@@ -674,11 +701,11 @@ nunca** lleva `nombre`/`presentacion` de producto ni ninguna clave fuera de
 | AC-21 | — | Con el servicio de órdenes abortado, la grilla, el filtro, la búsqueda, la ficha y el chat funcionan (se reusan pasos de `catalog.spec.ts`/`chat.spec.ts`); `catalog.spec.ts` sigue verde con el header sticky |
 | AC-22 | `orders-client.test.ts` (`tope_alcanzado` en GET y POST); `order-send-banner.test.tsx` (sin "Reintentar", con canales) | Tope al entrar (sin formulario) y tope al enviar (banner); GET `no_disponible` al entrar → formulario visible (no es tope) |
 | AC-23 | **No aplica al frontend** (entrega a Discord server-side; el visitante no ve canales). El cliente no cambia | — |
-| AC-24 | `checkout.test.ts`: dos `SUBMIT` seguidos → un solo efecto de envío; "Reintentar" y el reintento por `token_vencido` → misma key; cambio de contacto/cantidad → key nueva | Doble clic en "Enviar orden" (`dblclick` y dos `click` sin esperar) → **un** POST capturado; POST abortado → "Reintentar" → el mock responde `200 aceptada` con el mismo `RA-48271` y la key capturada es idéntica en los dos bodies. No-duplicación en mail/Discord: server-side |
+| AC-24 | `checkout.test.ts`: dos `SUBMIT` seguidos → un solo efecto de envío; "Reintentar" y el reintento por `token_vencido` → misma key; cambio de teléfono/cantidad → key nueva | Doble clic en "Enviar orden" (`dblclick` y dos `click` sin esperar) → **un** POST capturado; POST abortado → "Reintentar" → el mock responde `200 aceptada` con el mismo `RA-48271` y la key capturada es idéntica en los dos bodies. No-duplicación en mail/Discord: server-side |
 | AC-25 | **No aplica al frontend** más allá de AC-10/AC-20: `aceptada` con un solo canal se ve igual que con dos | — |
 | AC-26 | `check:leak` con el patrón de webhook de Discord sobre `.next` y `public/data` (F18); `src/` no referencia Discord | — |
-| AC-27, AC-29, AC-30, AC-31 | **No aplican al frontend** (registro seudonimizado y borrados server-side; acceso al canal y retención de Gmail, manuales) | — |
-| AC-28 | `confirmation-store.test.ts`: lo guardado tiene solo `numero_orden`, líneas, total, `email?`, `telefono?` (nunca nombre/dirección/localidad, aunque se le pase el contacto completo); borrar/leer con `Storage` fake; JSON corrupto → nada | Después de 201: `sessionStorage` sin nombre/dirección/localidad; recarga en `/carrito` → mismo número; navegar a `/` → la clave ya no está en `sessionStorage`; `page.goto('/')` (carga completa) → tampoco; página nueva del mismo contexto → sin confirmación; `localStorage` nunca con contacto |
+| AC-27, AC-29, AC-30, AC-31 | **No aplican al frontend** (registro seudonimizado y acceso al canal; AC-29 y AC-31 retirados el 2026-10-05) | — |
+| AC-28 | `confirmation-store.test.ts`: lo guardado tiene solo `numero_orden`, líneas, total y `telefono` (nunca otro dato, aunque se le pase un contacto con más campos); borrar/leer con `Storage` fake; JSON corrupto → nada | Después de 201: `sessionStorage` solo con el teléfono como dato de contacto; recarga en `/carrito` → mismo número; navegar a `/` → la clave ya no está en `sessionStorage`; `page.goto('/')` (carga completa) → tampoco; página nueva del mismo contexto → sin confirmación; `localStorage` nunca con contacto |
 | Sin JS / reduced-motion | Markup de `noscript` en la ficha y en `/carrito` | Contexto con `javaScriptEnabled: false`: el link del header navega y se ven los avisos `noscript`; `reducedMotion: "reduce"` |
 
 `form_token`: `checkout.test.ts` cubre que un token de < 3,5 s espera lo
@@ -717,7 +744,7 @@ Sin divergencias con `## Backend` / RFC rev. 2 ni con la spec enmendada.
   `flood` van a la falla genérica.
 - **Q-F4** → token de < 3 s = `token_vencido`; espera mínima del cliente
   de 3,5 s (decisión 7).
-- **Q-F5** → aprobado: email/teléfono en `sessionStorage` de la pestaña
+- **Q-F5** → aprobado: teléfono (antes email/teléfono) en `sessionStorage` de la pestaña
   mientras esté en `/carrito` (AC-28, decisión 9).
 - **Q-F6** → `total_vigente` se calcula igual que el total local.
 

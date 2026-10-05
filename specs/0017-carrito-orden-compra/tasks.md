@@ -1,5 +1,12 @@
 # 0017 — Carrito y orden de compra · Tasks
 
+> **Enmienda 2026-10-05 (recorte de datos del MVP):** el formulario pide
+> solo teléfono, y se retiran el borrado automático a 60 días (AC-29/AC-31)
+> y el aviso de privacidad. Los IDs no se renumeran: **B23 e I19 quedan
+> retiradas** (tachadas), y B4, B9, B10, B11, B12, B16, B18, B19, I3, I5,
+> I9, I11, I13, I15, I16, I18, F1, F2, F12, F13, F15 y F19 se ajustaron.
+> Ver el `spec.md` (precisión 2026-10-05) y el RFC (revisión 3).
+>
 > Igual que `plan.md`: cada agente agrega tareas bajo su propio heading y
 > no reescribe las de otro. `backend-agent` → `## Backend` (prefijo `B`);
 > `devops-agent` → `## Infra`; `frontend-agent` → `## Frontend`. Las
@@ -17,14 +24,14 @@ referencian); B21–B24 son nuevas, de esta revisión.
 
 ### Estimate
 
-**Tamaño L: ~24 a 31 h** (antes: 16 a 22 h).
+**Tamaño L: ~22 a 29 h** (antes: 16 a 22 h; ~2 h menos por retirar B23 y simplificar B4/B12).
 
 | Bloque | Tareas | Horas |
 |---|---|---|
 | Preparación + bootstrap | B1–B3, B24 | ~2,5–3,5 h |
 | Núcleo puro (validación, catálogo, precios, token, número, modelo, renders) | B4–B10, B21 | ~8–10 h |
 | Estado y entrega (idempotencia por canal, SES, Discord, rate limit, ledger) | B11–B14, B22 | ~6–8 h |
-| Handlers + budget-guard + retención + leak | B15–B17, B23 | ~5–6 h |
+| Handlers + budget-guard + leak (B23, retención, retirada) | B15–B17 | ~4–4,5 h |
 | Cierre, smoke real y coordinación | B18–B20 | ~2–3 h |
 
 **Riesgos que pueden mover el estimate:**
@@ -92,9 +99,11 @@ referencian); B21–B24 son nuevas, de esta revisión.
   - Esquema estricto: clave desconocida → `no_permitido`.
   - Límites de tamaño (16 KB).
   - Honeypot `sitio_web`.
-  - Reglas de contacto (RFC §3.2, idénticas a `ux.md`); rechazar CR/LF,
+  - Regla del teléfono (RFC §3.2, idéntica a `ux.md`: obligatorio, 8..15
+    dígitos tras quitar espacios, `-`, `(`, `)` y `+`); rechazar CR/LF,
     caracteres de control (`Cc`) y de control bidi (U+202A–U+202E,
-    U+2066–U+2069).
+    U+2066–U+2069). Las claves `nombre`, `email`, `direccion` y
+    `localidad` dentro de `contacto` → `no_permitido` (esquema estricto).
   - Líneas: **1..100**, `producto_id` sin repetir, cantidad entera 1..20,
     precios enteros ≥ 0.
   - Tests por campo (AC-9, AC-17).
@@ -129,8 +138,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
   - Tests de contenido (AC-13) y de ausencia de tokens prohibidos
     (AC-16), con una clave de costo inyectada en el catálogo.
 - [ ] **B10 — `lib/log.ts`:** logger JSON con allowlist de campos
-  (incluye `canal`, `codigo`, `http_status`, los contadores de
-  retención). Test: contacto, IP, body, URL del webhook y bodies de
+  (incluye `canal`, `codigo`, `http_status`). Test: contacto, IP, body, URL del webhook y bodies de
   Discord se descartan (AC-18, AC-26).
 - [ ] **B21 — `lib/discord/render.ts`** (nueva):
   - Primera línea fuera del bloque, solo con datos del servidor: número,
@@ -164,8 +172,8 @@ referencian); B21–B24 son nuevas, de esta revisión.
   - Tests con un DynamoDB fake, incluidos claims concurrentes (AC-24).
 - [ ] **B12 — `lib/mail/ses-sender.ts`:**
   - SES v2 `SendEmail` con `ToAddresses = [ORDER_RECIPIENT]` (validado al
-    arrancar), `FromEmailAddress = ORDER_SENDER_EMAIL` y `ReplyTo` =
-    email del visitante (RFC §11 pendiente 3).
+    arrancar), `FromEmailAddress = ORDER_SENDER_EMAIL`; **sin `ReplyTo`**
+    (ya no hay email del visitante, RFC rev. 3).
   - Cliente con **`maxAttempts: 1`** y timeout de 4 s.
   - Clasificación: `MessageId` → `entregado`; 4xx o error antes de
     conectar → `fallido`; 5xx, timeout o socket cortado → `incierto`.
@@ -180,15 +188,12 @@ referencian); B21–B24 son nuevas, de esta revisión.
     error antes de conectar → `fallido`; 429 → una espera si
     `retry_after ≤ 1,5 s` y quedan > 6 s, si no `fallido`; 5xx, timeout
     o 2xx sin `id` → `incierto`.
-  - `deleteMessage(webhookId, messageId)` para B23, con la clasificación
-    de `10008`/`10015`/429.
   - **Nunca** loguea ni relanza la URL o el body; los errores se mapean a
     códigos.
   - `delivery.ts`: envío en paralelo (`Promise.allSettled`) de los canales
     reclamados; persistencia por canal apenas termina cada uno; agregado
     según RFC §5.3; `canal_fallido` por cada canal que no entregó (con
-    `orden_aceptada`); si Discord entregó, `ADD` a `BORRAR#<creado_en +
-    61 d>` (falla → `borrado_no_programado`).
+    `orden_aceptada`). Sin programación de borrado (AC-29 retirado).
   - Tests con fetch fake y DynamoDB fake (AC-20, AC-23, AC-24, AC-25,
     AC-26): la matriz completa de estados de la tabla de §5.3.
 - [ ] **B13 — `lib/rate-limit.ts`:**
@@ -234,19 +239,9 @@ referencian); B21–B24 son nuevas, de esta revisión.
     tiene valor, o `DeleteFunctionConcurrency` si está vacía.
   - Idempotente. Tests con los mensajes SNS reales de ejemplo de los dos
     tipos, a coordinar con I9/I10 (AC-22).
-- [ ] **B23 — `handlers/discord-retention.ts` +
-  `lib/discord/retention-queue.ts`** (nueva, AC-29):
-  - Cursor `BORRAR#CURSOR` (default: hoy − 7 días); recorrer los buckets
-    hasta hoy; `DELETE` en serie respetando `X-RateLimit-*`; tope
-    `BORRADO_MAX_POR_CORRIDA`; corte limpio si quedan < 10 s.
-  - 204 o `10008` → sacar del set; `10015` o `webhook_id` distinto →
-    `requieren_manual`; 429 → esperar y seguir; 5xx o timeout → pendiente.
-  - Bucket vacío → `DeleteItem`; avanzar el cursor.
-  - Una línea de resumen `retencion_discord` con contadores y
-    `bucket_mas_viejo`: sin ids, sin URL, sin contenido.
-  - Independiente de `CONTROL`.
-  - Tests con un Discord fake y DynamoDB fake: los casos de la fila
-    AC-29 de `plan.md`.
+- ~~**B23 — `handlers/discord-retention.ts` + `lib/discord/retention-queue.ts`**
+  (AC-29)~~ — **RETIRADA el 2026-10-05** (recorte de datos del MVP). El
+  diseño está en el historial de git (commit `8371ac9`) por si se retoma.
 - [ ] **B17 — `src/leak-audit.ts` + `pnpm check:leak`:**
   - Tokens de costo, margen y precio LACA en `src/`, en un mail
     renderizado de ejemplo, en un **mensaje de Discord renderizado de
@@ -269,28 +264,24 @@ referencian); B21–B24 son nuevas, de esta revisión.
     `docs/runbook.md`:
     - reactivar a mano `CONTROL`/concurrency después de un tope o un
       flood;
-    - qué hacer ante `estado_incierto`, `canal_fallido`,
-      `borrado_no_programado` y `requieren_manual`;
-    - rotar el webhook de Discord (y borrar a mano los mensajes del
-      webhook viejo de menos de 60 días);
+    - qué hacer ante `estado_incierto` y `canal_fallido`;
+    - rotar el webhook de Discord;
     - checklist de B24;
     - filtro de Gmail de la opción A;
-    - supresión de datos a pedido del cliente antes de los 60 días.
+    - supresión de datos a pedido del cliente: borrar a mano el mail y el
+      mensaje de Discord (no hay borrado automático).
 - [ ] **B19 — Smoke test real** (después del deploy de `## Infra` y de
   B24, con aprobación humana):
   - Una orden de prueba contra el entorno real: mail en SES sandbox a
     renovartebyjuli@gmail.com **y** mensaje en el canal de Discord.
   - Verificar con el CTO/CEO: el mail llegó **a la bandeja de entrada**
     (no a spam), con headers SPF/DKIM/DMARC revisados; el mensaje de
-    Discord tiene el **mismo número**, el contacto, el adjunto completo
+    Discord tiene el **mismo número**, el teléfono, el adjunto completo
     y ninguna mención; el número coincide con la respuesta.
   - Reintentar con la misma key → sin segundo mail ni segundo mensaje.
   - Falla parcial real: con el parámetro del webhook apuntando a un
     webhook borrado → `aceptada` por mail + alerta `canal_fallido`
     recibida por email. Después restaurar el parámetro.
-  - Borrado: invocar `discord-retention` a mano con un bucket de prueba
-    de fecha pasada que contenga el mensaje del smoke → el mensaje
-    desaparece del canal.
   - Si el mail cae en spam con el filtro puesto → escalar a la opción B
     (I17).
 - [ ] **B20 — Coordinación cross-repo:**
@@ -336,6 +327,10 @@ Reglas:
 - [ ] **F1 — `src/lib/contact.ts` + guardia de AC-14.**
   - Constantes de email e Instagram, y los helpers `mailtoConsulta(numero)`
     e `INSTAGRAM_DM_URL`.
+  - **Enmienda 2026-10-05:** suma `RENOVARTE_TELEFONO` (`1130579528`) y
+    `telefonoHref()` (`tel:`), con su test. *Pendiente:* link a WhatsApp
+    si RenovArte confirma que es WhatsApp. (F1 ya estaba commiteada con
+    email e Instagram; el teléfono entra en un commit aparte.)
   - `tests/unit/no-runtime-backend.test.ts`: falla si aparece bajo `src/`
     un `route.(ts|js)`, un `middleware.*`/`proxy.*` o `"use server"`.
   - ✔ Los dos tests en verde; gate verde.
@@ -344,8 +339,9 @@ Reglas:
   - Guards `isEstadoResponse` / `isCrearOrdenResponse`.
   - `tests/unit/orders-wire.test.ts`: un JSON de ejemplo por variante, y
     un `resultado` desconocido o un body malformado → `false`.
-  - Tipos del RFC §3 **revisión 2** (`lineas` 1..100, `MAX_LINEAS = 100`
-    como constante documental).
+  - Tipos del RFC §3 **revisión 3** (`lineas` 1..100, `MAX_LINEAS = 100`
+    como constante documental; **`contacto` = `{ telefono }`**, sin
+    `contacto_requerido` y con `CampoOrden` reducido, enmienda 2026-10-05).
   - ✔ Test en verde; cuando cierre B3, el diff contra el `src/wire.ts` de
     `renovarte-ordenes` queda vacío salvo el comentario de cabecera.
 - [ ] **F3 — `src/lib/cart/model.ts`.**
@@ -458,13 +454,15 @@ Reglas:
 - [ ] **F12 — `validate-contact.ts` + `OrderForm` + `FormErrorSummary`**
   (**depende de `ux-agent`**: Q-F2(a), copy del error general; el resto
   del formulario sale de `ux.md` y puede avanzar).
-  - Reglas y copy textual de ux.md; validación al enviar y después por
-    blur; resumen enfocable.
-  - Campos con `label`, `autocomplete`, `inputmode`, `aria-describedby` y
-    `aria-invalid`; `fieldset`/`legend`; `novalidate`; honeypot inerte;
-    aviso de privacidad.
+  - Reglas y copy textual de ux.md (enmienda 2026-10-05: un único campo,
+    **teléfono**); validación al enviar y después por blur; resumen
+    enfocable.
+  - Campo con `label`, `autocomplete="tel"`, `inputmode="tel"`,
+    `aria-describedby` y `aria-invalid`; `novalidate`; honeypot inerte.
+    **Sin** `fieldset`/`legend` y **sin** aviso de privacidad (retirado).
   - `tests/unit/validate-contact.test.ts` y
-    `tests/unit/order-form.test.tsx` (AC-9; AC-12: sin campos de pago,
+    `tests/unit/order-form.test.tsx` (AC-9: el único campo es el teléfono, sin
+    nombre, email, dirección ni localidad; AC-12: sin campos de pago,
     envío, cupón ni comentario; AC-19: honeypot fuera de pantalla,
     `aria-hidden`, `tabIndex={-1}`).
   - e2e: enviar vacío → resumen enfocado y **cero** POST.
@@ -476,7 +474,7 @@ Reglas:
     de `routeWebSocket` en `chat.spec.ts`.
   - Estado "Enviando…": `readonly`, stepper/Quitar/Vaciar deshabilitados
     y sin doble envío.
-  - `OrderSendBanner` (falla / tope), `ContactChannels`, `CopyButton` y
+  - `OrderSendBanner` (falla / tope), `ContactChannels` (con el teléfono), `CopyButton` y
     `order-text.ts`.
   - Tests unit de markup del banner y de `order-text`.
   - e2e:
@@ -505,21 +503,20 @@ Reglas:
   - ✔ Tests en verde.
 - [ ] **F15 — Confirmación.**
   - `OrderConfirmation`: número, "Copiar número", "Qué sigue" con los
-    medios dados, canales con `mailto` más asunto e `ig.me`, "Lo que
+    teléfono dado, canales con `tel:` (1130579528), `mailto` más asunto e `ig.me`, "Lo que
     pediste" y "Volver al catálogo"; foco en el `h1`.
   - Vaciar el carrito.
   - `src/lib/orders/confirmation-store.ts` (AC-28, Q-F5 aprobada): se
     escribe solo después de `aceptada`, por allowlist
-    `{numero_orden, lineas, total, email?, telefono?}`; el
+    `{numero_orden, lineas, total, telefono}`; el
     `CartProvider` lo borra al navegar o al montar fuera de `/carrito`.
   - `tests/unit/order-confirmation.test.tsx` y
-    `tests/unit/confirmation-store.test.ts` (nunca nombre, dirección ni
-    localidad aunque se le pase el contacto completo; JSON corrupto →
-    nada).
+    `tests/unit/confirmation-store.test.ts` (nunca otro dato que el teléfono
+    aunque se le pase un contacto con más campos; JSON corrupto → nada).
   - e2e AC-10 / AC-28 / AC-18:
     - 201 → confirmación `RA-48271`, contador oculto;
     - recarga en `/carrito` → mismo número;
-    - `sessionStorage` sin nombre, dirección ni localidad;
+    - `sessionStorage` solo con el teléfono como dato de contacto;
     - navegar a `/` → la clave ya no está; `page.goto('/')` (carga
       completa) → tampoco; volver a `/carrito` → vacío;
     - página nueva del mismo contexto → sin confirmación;
@@ -600,14 +597,14 @@ ejecuta en modo diseño.
 
 ### Estimate
 
-**Tamaño M/L: ~14 a 19 h** (antes: 11 a 15 h), más ~1,5–2,5 h de sesión
+**Tamaño M/L: ~12 a 17 h** (antes: 11 a 15 h; ~2 h menos por retirar I19 y reducir I18), más ~1,5–2,5 h de sesión
 en vivo con el CTO/CEO.
 
 | Bloque | Tareas | Horas |
 |---|---|---|
 | Verificaciones y bootstrap manual (AWS + GitHub) | I1–I2, I20 | ~1,5–2 h (+ sesión en vivo) |
 | Terraform (datos, cómputo, URL, SES, IAM, SSM, budget, flood, OIDC) | I3–I11 | ~7–9 h |
-| Terraform nuevo: alertas operativas y `discord-retention` | I18–I19 | ~2,5–3 h |
+| Terraform nuevo: alertas operativas (`discord-retention`/I19, retirada) | I18 | ~1,5–2 h |
 | CI/CD | I12 | ~1–1,5 h |
 | Docs, validate y gate | I13–I14 | ~1,5–2 h |
 | Apply, verificación post-apply y cierre | I15–I16 | ~1,5–2,5 h (en vivo) |
@@ -702,8 +699,7 @@ en vivo con el CTO/CEO.
     (default 5, nullable), `aws_budget_limit_usd` (20),
     `budget_notification_email` (sin default), **`alerts_email`** (default
     = `budget_notification_email`), `flood_invocations_per_minute` (300),
-    **`config_revision`** (1), **`borrado_max_por_corrida`** (200),
-    **`discord_retention_schedule`** (`cron(0 6 * * ? *)`), `sender_domain`
+    **`config_revision`** (1), `sender_domain`
     (""), `github_repo`, `github_oidc_provider_arn`, y los umbrales y
     costos unitarios del ledger con los defaults del RFC;
   - `terraform.tfvars.example` con placeholders (sin emails ni IDs
@@ -715,8 +711,7 @@ en vivo con el CTO/CEO.
   `expira_en` y `deletion_protection_enabled = true`.
 - [ ] **I5 — `lambda.tf` + `logs.tf`** (I-D3, I-D4):
   - `archive_file` de `dist/`;
-  - log groups con retención de 14 días (`orders-http` y `budget-guard`
-    acá; el de `discord-retention` en I19);
+  - log groups con retención de 14 días (`orders-http` y `budget-guard`);
   - `orders-http` y `budget-guard` `nodejs22.x` arm64, log format `Text`,
     con timeout, memoria y env vars de la tabla I-D3 (incluidas
     `DISCORD_WEBHOOK_PARAM` y `CONFIG_REVISION` en `orders-http`, y
@@ -756,8 +751,8 @@ en vivo con el CTO/CEO.
     y `cloudwatch.amazonaws.com`;
   - suscripción + permiso Lambda para `budget-guard`;
   - schedule de reset mensual + **un** rol de Scheduler con
-    `lambda:InvokeFunction` sobre `budget-guard` y `discord-retention`
-    (el schedule diario va en I19).
+    `lambda:InvokeFunction` sobre `budget-guard` (el Lambda
+    `discord-retention` y su schedule diario se retiraron, I19).
   - Coordinar con B16 el formato del mensaje SNS del Budget.
 - [ ] **I10 — `alarm.tf`** (I-D8; aprobada por el CTO/CEO y aceptada por
   backend): alarma `Invocations` Sum de 60 s > 300 sobre `orders-http`,
@@ -769,41 +764,27 @@ en vivo con el CTO/CEO.
     `var.github_oidc_provider_arn`, `aud` y `sub` fijados a este repo y
     `refs/heads/main`;
   - inline policy con `lambda:UpdateFunctionCode`, `GetFunction` y
-    `GetFunctionConfiguration` sobre **los 3 ARN**;
+    `GetFunctionConfiguration` sobre **los 2 ARN** (`orders-http` y
+    `budget-guard`);
   - output del ARN del rol, que va como **variable** (no secreto) del
     repo en GitHub.
-- [ ] **I18 — `alerts.tf`: alertas operativas** (nueva; I-D13):
+- [ ] **I18 — `alerts.tf`: alertas operativas** (nueva; I-D13; reducida el
+  2026-10-05):
   - topic `renovarte-ordenes-alertas-operativas` sin KMS, policy con
     `SNS:Publish` solo para `cloudwatch.amazonaws.com` +
     `aws:SourceAccount`, suscripción `email` a `var.alerts_email`;
-  - 3 `aws_cloudwatch_log_metric_filter` sin dimensiones, namespace
-    `RenovArte/Ordenes`, `metric_value = "1"`: `canal-fallido` y
-    `borrado-no-programado` (log group de `orders-http`) y
-    `retencion-sana` (log group de `discord-retention`, de I19);
-  - 3 alarmas: `-canal-degradado` (≥ 1 en 300 s, `notBreaching`),
-    `-borrado-no-programado` (ídem) y `-retencion-sin-latido` (Sum < 1 en
-    24 de 24 períodos de 3.600 s, `breaching`), todas hacia este topic.
-  - Si I1 encontró 7 u 8 alarmas en la cuenta: una sola métrica y una
-    sola alarma para las dos de `orders-http`.
-  - Depende de que el backend emita las líneas como en N3/N4 (B16/B22/B23
-    + `lib/log.ts`).
-- [ ] **I19 — `discord-retention.tf`: Lambda de borrado** (nueva; I-D3,
-  I-D5, I-D6):
-  - log group `/aws/lambda/renovarte-ordenes-discord-retention` de 14
-    días;
-  - función `nodejs22.x` arm64, mismo zip, 60 s, 128 MB, sin reserved
-    concurrency, log format `Text`, env vars `ORDERS_TABLE`,
-    `DISCORD_WEBHOOK_PARAM`, `BORRADO_MAX_POR_CORRIDA`,
-    `CONFIG_REVISION`; `ignore_changes = [filename, source_code_hash]`;
-  - rol: logs de su propio group; DynamoDB `GetItem`/`UpdateItem`/
-    `DeleteItem` **solo** con `ForAllValues:StringLike
-    dynamodb:LeadingKeys = ["BORRAR#*"]`; `ssm:GetParameter` **solo**
-    sobre el parámetro del webhook. Nada más;
-  - `aws_scheduler_schedule` `renovarte-ordenes-discord-retention` con
-    `var.discord_retention_schedule` UTC, input `{}`, flexible window
-    `OFF`, con el rol de Scheduler de I9;
-  - **fuera** del kill-switch: no se suma a la policy de `budget-guard`.
-  - Para `plan`/`apply` depende de B23 (`pnpm build`).
+  - 1 `aws_cloudwatch_log_metric_filter` sin dimensiones, namespace
+    `RenovArte/Ordenes`, `metric_value = "1"`: `canal-fallido` (log group
+    de `orders-http`);
+  - 1 alarma: `-canal-degradado` (≥ 1 en 300 s, `notBreaching`) hacia este
+    topic. Se quitan `borrado-no-programado` y `retencion-sin-latido`
+    (retención retirada).
+  - Depende de que el backend emita `canal_fallido` (B16/B22 +
+    `lib/log.ts`).
+- ~~**I19 — `discord-retention.tf`: Lambda de borrado**~~ — **RETIRADA el
+  2026-10-05** (AC-29 retirado). Ya no se crean el Lambda, su log group,
+  su rol, su schedule ni sus alarmas. El diseño está en el historial de
+  git (commit `8371ac9`).
 
 #### CI/CD
 
@@ -833,10 +814,8 @@ en vivo con el CTO/CEO.
     - verificar la identidad SES y confirmar la suscripción de alertas;
     - cargar y rotar el secreto HMAC y la URL del webhook
       (`read -rs` + `put-parameter --overwrite` → subir
-      `config_revision` → `apply`; N2). Al rotar el webhook, borrar a
-      mano los mensajes del viejo de menos de 60 días;
-    - qué significa cada alarma (flood, canal degradado, borrado no
-      programado, retención sin latido) y la consulta de Logs Insights
+      `config_revision` → `apply`; N2);
+    - qué significa cada alarma (flood y canal degradado) y la consulta de Logs Insights
       para ver el detalle sin datos personales;
     - reactivar a mano (`put-function-concurrency` o
       `delete-function-concurrency` + `CONTROL`) después del Budget o
@@ -867,15 +846,13 @@ en vivo con el CTO/CEO.
      es lo esperado.
   8. Pasar `orders_api_url` a `frontend-agent` (Vercel, solo Production)
      y el ARN del rol de deploy a `AWS_DEPLOY_ROLE_ARN` (I20).
-  - Depende de B15–B17, B23, B24 (canal y webhook creados), I1–I14 e
-    I18–I20.
+  - Depende de B15–B17, B24 (canal y webhook creados), I1–I14, I18 e
+    I20.
   - Desbloquea B19.
 - [ ] **I16 — Verificación post-apply** (sin gasto relevante):
   - `aws iam simulate-principal-policy` sobre el rol de `orders-http` con
     `ses:Recipients` = otro email → **denied**, y con el destinatario fijo
-    → allowed (AC-17, capa IAM). Sobre el rol de `discord-retention`:
-    `dynamodb:GetItem` con `LeadingKeys` `IDEM#x` → **denied**, `BORRAR#x`
-    → allowed.
+    → allowed (AC-17, capa IAM).
   - `curl -X OPTIONS` con el `Origin` de producción y con uno ajeno →
     headers CORS solo en el primero.
   - `aws sns publish` de un mensaje de prueba con la forma del Budget →
@@ -883,18 +860,11 @@ en vivo con el CTO/CEO.
     `aws lambda invoke` de `budget-guard` con `{"mode":"reset"}` → vuelve
     a 5 o sin reserva (AC-22, capa infra).
   - `aws logs test-metric-filter` con líneas de ejemplo del backend
-    (`canal_fallido`, `borrado_no_programado`, `retencion_discord` sana
-    y con `requieren_manual: 1`) → matchean solo las que corresponde
-    (N4).
-  - `aws lambda invoke` de `discord-retention` (con B19) → línea
-    `retencion_discord` en su log group y `retencion-sin-latido` en `OK`
-    tras la corrida. Observar la alarma **3 días** para confirmar que no
-    oscila (I-D13).
+    (`canal_fallido`) → matchea (N4).
   - `grep -c 'discord.com' terraform.tfstate` y un grep del secreto HMAC
     después de un `terraform plan` → **0** (N1). Si aparece: fallback
     de I-D9.
-  - Verificar la retención de 14 días en los 3 log groups y que el
-    schedule diario esté `ENABLED`.
+  - Verificar la retención de 14 días en los 2 log groups.
   - **Al mes:** en Cost Explorer, confirmar si SES aparece con
     `Project=renovarte-ordenes` y documentar el resultado (I-D6).
 - [ ] **I17 — (Condicional: solo si B19 falla con la opción A) Opción

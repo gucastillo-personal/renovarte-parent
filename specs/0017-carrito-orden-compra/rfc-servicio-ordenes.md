@@ -1,9 +1,30 @@
 # RFC — Servicio de órdenes (spec 0017)
 
-**Autor:** `backend-agent`. **Estado:** propuesta, revisión 2. Pendiente de
+**Autor:** `backend-agent`. **Estado:** propuesta, revisión 3 (enmienda 2026-10-05). Pendiente de
 aprobación del CTO/CEO en el gate de Fase 3, junto con las secciones
 `## Infra` (`devops-agent`) y `## Frontend` (`frontend-agent`) de
 `plan.md`.
+
+**Cambios de la revisión 3 (2026-10-05, enmienda de la spec: recorte de
+datos del MVP):**
+
+- **El contrato se achica:** `contacto` pasa a ser `{ telefono }`. Se
+  eliminan `nombre`, `email`, `direccion` y `localidad` del request
+  (§3.2), `contacto_requerido` y los campos asociados de `CampoOrden`.
+  **Es un cambio de contrato respecto de la revisión 2**, sin impacto en
+  código ya escrito porque B3 (`wire.ts`) todavía no existe; F2 copia
+  estos tipos.
+- **Se retira el borrado automático de Discord a los 60 días** (AC-29):
+  desaparecen §10.3, el Lambda `discord-retention`, su schedule, su IAM,
+  sus 2 alarmas, el bucket `BORRAR#` de DynamoDB y el paso 6 de §5.4.
+  Quedan 2 Lambdas (`orders-http` y `budget-guard`) y 2 alarmas (flood y
+  canal fallido). El diseño retirado está en el historial de git
+  (commit `8371ac9`) por si se retoma.
+- **Se retira el texto de privacidad** del frontend (§7) y el `Reply-To`
+  (ya no hay email del visitante, §10.1).
+- **Se mantienen** el canal solo para propietarios (AC-30), el webhook
+  como secreto (AC-26), el registro seudonimizado de 90 días (AC-27) y los
+  logs sin datos de contacto (AC-18).
 
 **Cambios de la revisión 2 (2026-09-30):**
 
@@ -23,10 +44,9 @@ aprobación del CTO/CEO en el gate de Fase 3, junto con las secciones
   25.326 queda como paso previo a producción.
 - Q-F4 resuelto: un `form_token` de menos de 3 s responde
   `token_vencido` (§6.2).
-- **Nuevo (decisión del CTO/CEO, 2026-09-30e): borrado automático de los
-  mensajes de Discord a los 60 días** (AC-29), con un Lambda programado
-  diario que borra por el propio webhook (§10.3). El canal lo ven solo
-  los propietarios de RenovArte (paso manual, §7).
+- *(Retirado en la revisión 3)* Borrado automático de los mensajes de
+  Discord a los 60 días (AC-29). El canal lo ven solo los propietarios de
+  RenovArte (paso manual, §7), que sigue vigente.
 - Numeración de AC alineada con la spec enmendada por `product-agent`
   (AC-23 a AC-29).
 - Aceptadas las divergencias de `devops-agent` (§13).
@@ -82,8 +102,8 @@ lint + typecheck + test + check:leak.
 - **Superficie HTTP:** Lambda Function URL (`AuthType NONE`) + reserved
   concurrency, adoptada por `devops-agent` (I-D1). La Function URL
   maneja CORS y el preflight (§6.4).
-- **Tres Lambdas:** `orders-http` (las 2 rutas), `budget-guard` (§8.4) y
-  `discord-retention` (borrado a los 60 días, §10.3).
+- **Dos Lambdas:** `orders-http` (las 2 rutas) y `budget-guard` (§8.4).
+  *(Revisión 3: se retiró `discord-retention`.)*
 
 ## 3. Contrato HTTP con `renovarte-catalogo`
 
@@ -137,12 +157,8 @@ interface CrearOrdenRequest {
   }>;                             // 1..100 líneas (Q-F1), producto_id sin repetir
   total_visto: number;            // entero ARS = Σ precio_visto × cantidad, lo que el visitante vio
   contacto: {
-    nombre: string;               // 2..100 caracteres tras trim
-    email?: string;               // ≤254, forma x@y.zz
-    telefono?: string;            // 8..15 dígitos tras quitar espacios, - ( ) +
-    direccion: string;            // 4..200
-    localidad: string;            // 2..100
-  };                              // email y/o teléfono: al menos uno (AC-9)
+    telefono: string;             // obligatorio; 8..15 dígitos tras quitar espacios, - ( ) + (AC-9)
+  };                              // único dato personal (revisión 3, 2026-10-05)
   sitio_web?: "";                 // honeypot: debe venir ausente o vacío (§6.2)
 }
 ```
@@ -175,7 +191,7 @@ type CrearOrdenResponse =
 
   // 422: datos que el servidor rechaza (AC-9, defensa en profundidad)
   | { v: 1; resultado: "invalida";
-      errores: Array<{ campo: CampoOrden | null; codigo: "requerido" | "formato" | "largo" | "contacto_requerido" | "token_vencido" | "no_permitido" }>;
+      errores: Array<{ campo: CampoOrden | null; codigo: "requerido" | "formato" | "largo" | "token_vencido" | "no_permitido" }>;
     }                             // errores: [] → el cliente muestra el error general arriba del formulario
                                   // token_vencido = token fuera de su ventana de validez (vencido o de < 3 s, §6.2)
 
@@ -186,14 +202,20 @@ type CrearOrdenResponse =
   | { v: 1; resultado: "falla"; codigo: "limite_frecuencia" | "envio_fallido" | "catalogo_no_disponible" | "en_proceso" | "estado_incierto" | "origen" | "mantenimiento" | "interno" };
 
 type CampoOrden =
-  | "contacto.nombre" | "contacto.email" | "contacto.telefono"
-  | "contacto.direccion" | "contacto.localidad" | "contacto"   // "contacto" = falta email y teléfono
+  | "contacto.telefono"
   | "lineas" | "total_visto" | "form_token";
 ```
 
 **Diferencias con la revisión 1**, las únicas que ve `frontend-agent`:
 `lineas` pasa de 1..30 a **1..100**, y se documenta que `token_vencido`
 también cubre el token de menos de 3 s. Los tipos no cambian.
+
+**Diferencias con la revisión 2 (2026-10-05):** `contacto` es solo
+`{ telefono }`; se quitan `nombre`, `email`, `direccion` y `localidad` del
+request, el código `contacto_requerido` y los campos `contacto.nombre`,
+`contacto.email`, `contacto.direccion`, `contacto.localidad` y `contacto`
+de `CampoOrden`. Un body con cualquiera de las claves quitadas es
+`invalida`/`no_permitido` (esquema estricto).
 
 **Mapeo a los estados de `ux.md`:**
 
@@ -383,11 +405,9 @@ Con el orden de operaciones de §6.5:
    mismo `_intento_en`. Escribir cada canal por separado, y no uno solo
    al final, achica la ventana en la que un crash deja un canal
    entregado marcado como `enviando`.
-6. Si Discord quedó `entregado`: se programa su borrado a los 60 días
-   (`UpdateItem BORRAR#<fecha> ADD`, §10.3). Si esa escritura falla, la
-   orden sigue aceptada y se emite `evento: "borrado_no_programado"` con
-   alerta (el `discord_message_id` queda en `IDEM#` para el borrado
-   manual del runbook).
+6. ~~Programar el borrado en Discord a los 60 días~~ — **retirado en la
+   revisión 3** (AC-29). El `discord_message_id` igual queda en `IDEM#`
+   (90 días), para que los propietarios puedan borrar un mensaje a mano.
 7. Se agrega el resultado según la tabla de §5.3. Si es `aceptada` por
    primera vez: incremento del ledger (§8.2) y del contador de órdenes
    aceptadas por IP (§6.3), y respuesta `201`.
@@ -445,10 +465,9 @@ se valida contra
 un error de configuración no puede mandar datos a otro host. El webhook
 está atado a un solo canal por construcción de Discord.
 
-**Reply-To:** `Reply-To` con el email del visitante cuando lo dejó y pasó
-la validación. No es destinatario ni forma parte de `ses:Recipients`.
-Los campos no admiten CR/LF, así que no hay inyección de headers. Se
-omite si el CTO/CEO no lo quiere (§11).
+**Reply-To:** **retirado en la revisión 3**: ya no se pide el email del
+visitante, así que el mail no lleva `Reply-To`. RenovArte responde por
+teléfono.
 
 ### 6.2 Envío automatizado trivial (AC-19, segunda mitad)
 
@@ -530,32 +549,32 @@ Primero los chequeos más baratos, y la entrega al final:
    si está apagado, `tope_alcanzado` o `mantenimiento` según el motivo
    (§8.4), **sin escrituras**.
 2. Rate limit por IP (1 `UpdateItem`).
-3. Esquema, honeypot, `form_token` y reglas de contacto → `invalida`.
+3. Esquema, honeypot, `form_token` y regla del teléfono → `invalida`.
 4. Si la key ya existe (§5.4 paso 3), respuesta idempotente o claim de
    canales `fallido`.
 5. Catálogo (§4) → `rechazada_por_catalogo`.
 6. Cupo global de órdenes (condicional).
 7. Reserva de la key (`IDEM#`) y del número de orden (`NUM#`, §9).
 8. Envío en paralelo por mail y Discord → `UpdateItem` por canal →
-   programación del borrado en Discord (§10.3) → agregado (§5.3) →
-   ledger (§8.2) → `201`.
+   agregado (§5.3) → ledger (§8.2) → `201`.
 
-## 7. Datos personales (AC-18, AC-26, AC-27, AC-29, Ley 25.326)
+## 7. Datos personales (AC-18, AC-26, AC-27, AC-30, Ley 25.326)
 
 Principio: **el servicio procesa los datos personales en memoria y no los
 guarda.** El registro de la orden se guarda seudonimizado durante 90 días
 (decisión del CTO/CEO). **Hay dos copias completas, las dos fuera de
 AWS**: el mail en la casilla de RenovArte y el mensaje (más su adjunto)
 en el canal privado de Discord. La segunda es una decisión explícita del
-CTO/CEO para no perder órdenes si el mail cae en spam, y se borra sola a
-los 60 días (§10.3).
+CTO/CEO para no perder órdenes si el mail cae en spam. **Desde la
+revisión 3 el único dato personal es el teléfono**, y ninguna de las dos
+copias tiene borrado automático (decisión 2026-10-05, riesgo aceptado por
+RenovArte para el MVP).
 
 | Dato | Dónde queda | Cuánto tiempo |
 |---|---|---|
-| Nombre, email, teléfono, dirección, localidad | **(1)** El mail (Gmail de RenovArte). **(2)** El mensaje y el adjunto `.txt` en el canal privado de Discord. Nunca en DynamoDB, logs ni respuestas | (1) Lo que RenovArte conserve en su casilla. (2) **Se borra automáticamente entre 60 y 61 días después de publicado** (AC-29, §10.3); el adjunto se va con el mensaje |
+| Teléfono | **(1)** El mail (Gmail de RenovArte). **(2)** El mensaje y el adjunto `.txt` en el canal privado de Discord. Nunca en DynamoDB, logs ni respuestas | (1) y (2) **Sin plazo de borrado**: lo que RenovArte conserve en su casilla y en el canal (AC-29 y AC-31 retirados) |
 | Registro de la orden: `numero_orden`, `creado_en`, estado por canal, `mail_message_id`, `discord_message_id`, códigos de falla, líneas (`producto_id`, `cantidad`, `precio_unitario`), total, `payload_hmac` | DynamoDB `IDEM#<key>` | **90 días** por TTL (`expira_en` Number, epoch-segundos) |
 | Número de orden reservado | DynamoDB `NUM#RA-xxxxx`, sin datos personales | Sin TTL, para no reusar números (§9) |
-| Mensajes de Discord pendientes de borrar | DynamoDB `BORRAR#YYYY-MM-DD`: solo pares `webhook_id:message_id` (identificadores numéricos de Discord, sin datos personales) | Hasta que se borran; TTL de seguridad de 30 días después de la fecha de borrado |
 | IP | Solo `HMAC(secreto, ip)` en los contadores de rate limit | TTL de 24 h |
 | Logs | JSON con **allowlist** de campos (`numero_orden`, `resultado`, `codigo`, `canal`, `http_status`, latencias, `idempotency_key`). **Nunca** el body, el contacto, la IP en claro, la URL del webhook ni el **body de respuesta de Discord** (con `?wait=true`, Discord devuelve el mensaje completo, con los datos de contacto) | 14 días en CloudWatch |
 
@@ -595,19 +614,17 @@ los 60 días (§10.3).
     SSM y no se pega en el chat ni en ningún repo.
 - **Ley 25.326, a confirmar por el CTO/CEO antes de producción** (no soy
   abogado; decidido que no bloquea el diseño):
-  1. **Deber de información (art. 6):** sumar un texto corto de privacidad
-     (trabajo de UX/Frontend) que informe responsable, finalidad, carácter
-     de los datos y derechos de acceso, rectificación y supresión.
+  1. **Deber de información (art. 6):** el texto de privacidad del
+     formulario **se retiró** para el MVP (2026-10-05). Es el punto más
+     expuesto si más adelante se piden más datos.
   2. **Registro ante la AAIP (art. 21):** aplica a las bases que forman la
      casilla y **ahora también el canal de Discord**, no a este servicio.
   3. **Transferencia internacional (art. 12):** SES, Gmail **y Discord**
-     (Discord Inc., EE.UU.) procesan fuera de Argentina. Mencionarlo en el
-     texto de privacidad.
-  4. **Supresión:** si un cliente pide borrar sus datos antes de los 60
-     días, hay que borrar el mail y el mensaje de Discord a mano (los
-     propietarios pueden borrar mensajes del canal). Después de los 60
-     días, el mensaje de Discord ya no existe; el mail sigue la política
-     de la casilla.
+     (Discord Inc., EE.UU.) procesan fuera de Argentina.
+  4. **Supresión:** si un cliente pide borrar su teléfono, los
+     propietarios borran a mano el mail y el mensaje de Discord (pueden
+     borrar mensajes del canal; el `discord_message_id` está en `IDEM#`
+     durante 90 días). No hay borrado automático.
 
 ## 8. Tope de USD 20/mes (RNF-14, AC-22)
 
@@ -629,9 +646,6 @@ A una escala generosa de 300 órdenes y ~5.000 requests por mes:
 - **Lambda:** Always Free (1M invocaciones, 400k GB-s).
 - **DynamoDB on-demand:** ~USD 0,01. Discord suma 1 `UpdateItem` por
   orden (§5.4 paso 5).
-- **Borrado a los 60 días (§10.3):** 1 invocación diaria de
-  `discord-retention` (~30/mes) + EventBridge Scheduler (14M gratis/mes)
-  + unas pocas lecturas y escrituras de DynamoDB por día → USD 0.
 - **Function URL, SSM Standard (2 parámetros), CloudWatch Logs:** USD 0.
 
 **Total esperado: < USD 0,10/mes**, igual que antes.
@@ -738,8 +752,7 @@ spread del `Product` del catálogo.
 
 - **Asunto:** `Nueva orden RA-48271 · $ 64.320 · 3 productos`.
 - **Cuerpo** (texto plano + HTML simple): número; fecha y hora en
-  `America/Argentina/Buenos_Aires`; contacto (nombre, email y/o teléfono,
-  dirección, localidad); tabla de productos (nombre, presentación,
+  `America/Argentina/Buenos_Aires`; teléfono del visitante; tabla de productos (nombre, presentación,
   cantidad, unitario, subtotal); total; pie "Pago y envío a coordinar con
   el cliente. Orden generada desde el sitio."
 - Pesos con formato `$ 64.320`. En la parte HTML, todo el texto se
@@ -817,11 +830,7 @@ envío es atómico):
   Recibida el 30/09/2026 a las 14:32 (hora de Argentina)
   ```
   CONTACTO
-  Nombre:     Ana Pérez
-  Email:      ana@example.com
-  Teléfono:   —
-  Dirección:  Av. Siempre Viva 742
-  Localidad:  Rosario
+  Teléfono:   11 5555 5555
 
   PRODUCTOS
   2 × Crema hidratante facial · 50 ml
@@ -839,9 +848,9 @@ envío es atómico):
   render reemplaza cada `` ` `` por `ˋ` (U+02CB). CR/LF y caracteres de
   control ya los rechaza la validación (§3.2). La primera línea, fuera
   del bloque, solo tiene datos generados por el servidor.
-- **Presupuesto de caracteres:** encabezado + contacto ocupan ≤ ~1.000
-  caracteres en el peor caso (nombre 100, email 254, dirección 200 y
-  localidad 100). Las líneas de producto se agregan en orden mientras el
+- **Presupuesto de caracteres:** encabezado + contacto ocupan ≤ ~300
+  caracteres en el peor caso (el teléfono tiene ≤ 40 caracteres con sus
+  separadores). Las líneas de producto se agregan en orden mientras el
   total quede ≤ 1.900; si no entran todas, se cierra con `… y N
   productos más: ver el adjunto`. El total siempre se muestra.
 - **Adjunto `orden-RA-48271.txt`, siempre:** es `renderTextoPlano(orden)`,
@@ -850,102 +859,18 @@ envío es atómico):
 - Timeout de 4 s. El body de la respuesta solo se parsea para extraer
   `id`; **nunca se loguea** (§7).
 
-### 10.3 Borrado automático de los mensajes de Discord a los 60 días (AC-29)
+### 10.3 Borrado automático de los mensajes de Discord a los 60 días (AC-29) — retirado
 
-**Mecanismo elegido: una "cola por fecha" en DynamoDB + un Lambda
-programado diario (`discord-retention`) que borra con el propio webhook**
-(`DELETE /webhooks/{webhook_id}/{token}/messages/{message_id}`). Un
-webhook puede borrar los mensajes que él mismo creó, sin bot ni token de
-bot.
+**Retirado el 2026-10-05** por la enmienda de la spec (recorte de datos
+personales del MVP). Con él se van el Lambda `discord-retention`, el
+schedule diario, el bucket `BORRAR#<fecha>` en DynamoDB, la alarma de
+errores y el aviso de "borrado manual requerido". El diseño completo
+(cola por fecha en DynamoDB + Lambda programado que borra por el propio
+webhook) está en el historial de git (commit `8371ac9`) y se puede
+retomar sin rehacerlo si se vuelve a pedir más datos.
 
-**Registro (en `orders-http`, §5.4 paso 6):** cuando Discord queda
-`entregado`, se hace `UpdateItem pk = BORRAR#<fecha> ADD ids
-:{"<webhook_id>:<message_id>"}` (String Set).
-
-- `<fecha>` = fecha UTC de `creado_en + 61 días`. Como el job corre una
-  vez por día, esto garantiza que el mensaje se borra **entre 60 y 61
-  días** después de publicado, nunca antes de los 60.
-- El `webhook_id` (numérico, no secreto) se guarda para detectar el caso
-  de un webhook rotado (ver fallas).
-- Con el cupo global de 50 órdenes por día, un bucket tiene como máximo
-  ~50 ids (~2 KB), muy lejos del límite de 400 KB por ítem.
-- `expira_en` del bucket = fecha + 30 días (TTL de seguridad, §7).
-- También queda `discord_message_id` en `IDEM#` (90 días), para el
-  borrado manual si el registro en `BORRAR#` falló.
-
-**Job (`discord-retention`, EventBridge Scheduler diario, 06:00 UTC =
-03:00 de Argentina):**
-
-1. Lee el cursor `BORRAR#CURSOR` (el bucket pendiente más viejo; si no
-   existe, hoy − 7 días).
-2. Recorre los buckets desde el cursor hasta hoy. Para cada id:
-   - `DELETE` al webhook → `204`: borrado. Se saca el id del set
-     (`UpdateItem DELETE ids`).
-   - `404` con código de Discord `10008` (Unknown Message): alguien ya lo
-     borró a mano. Se da por borrado.
-   - `webhook_id` distinto del webhook vigente, o `404` con código
-     `10015` (Unknown Webhook): el webhook fue rotado o borrado y ya no
-     puede borrar ese mensaje. Queda pendiente con alerta **"borrado
-     manual requerido"** (runbook: los propietarios lo borran a mano
-     buscando por número de orden o por fecha).
-   - `429`: se espera `retry_after` y se sigue (una sola espera por id);
-     si no alcanza el tiempo, queda para la próxima corrida.
-   - `5xx`, timeout o error de red: queda pendiente para la próxima
-     corrida. **Borrar es idempotente** (un segundo `DELETE` sobre un
-     mensaje ya borrado da `10008`), así que acá no hay riesgo de
-     duplicar nada y se puede reintentar sin límite.
-3. Un bucket que queda vacío se borra (`DeleteItem`) y el cursor avanza.
-4. **Rate limit:** los `DELETE` van **en serie**, respetando
-   `X-RateLimit-Remaining` / `X-RateLimit-Reset-After` (se espera si
-   `Remaining` llega a 0). Tope de 200 borrados por corrida
-   (`BORRADO_MAX_POR_CORRIDA`) y corte limpio si quedan < 10 s de
-   Lambda; lo que sobra se hace al día siguiente. El volumen real
-   esperado es de ~1 a 10 borrados por día.
-5. **Si el job no corrió** (por ejemplo, un día de falla de AWS), la
-   corrida siguiente recupera todo desde el cursor. El retraso máximo es
-   de 1 día por corrida perdida.
-
-**Fallas y alertas (sin datos personales):**
-
-- Al terminar, el job loguea una sola línea con `evento:
-  "retencion_discord"`, `borrados`, `ya_borrados`, `pendientes`,
-  `pendientes_viejos`, `requieren_manual` y `bucket_mas_viejo` (una
-  fecha). **Nunca** loguea la URL del webhook, ids de mensajes,
-  contenido ni cuerpos de respuesta. El `DELETE` no devuelve contenido
-  (204).
-- Alerta si `pendientes_viejos > 0` (ids de un bucket de más de 2 días:
-  se reintentaron al menos 2 días seguidos sin éxito), si
-  `requieren_manual > 0`, o si el Lambda termina con error (métrica
-  `Errors` > 0). Va al topic de **alertas operativas** (§5.5), nunca al
-  del kill-switch.
-- `borrado_no_programado` (desde `orders-http`, §5.4 paso 6) también
-  alerta.
-
-**Independiente del tope:** el job corre aunque `CONTROL` esté apagado o
-`orders-http` esté en concurrency 0. Borrar datos personales es una
-obligación, y el costo es ~0. `budget-guard` no lo toca.
-
-**Alternativas descartadas:**
-
-- **TTL de DynamoDB + Streams → Lambda.** Parece más "automático", pero:
-  - el TTL de DynamoDB no es puntual: AWS borra los ítems vencidos
-    "típicamente en unos días", así que el plazo de 60 días no quedaría
-    garantizado;
-  - si el borrado en Discord falla, el ítem **ya no existe** y el stream
-    retiene el evento solo 24 h. Después se pierde el rastro del mensaje,
-    que quedaría para siempre en el canal;
-  - agrega un stream, una event source mapping con filtro y una DLQ para
-    no perder fallas. Es más infraestructura para un resultado peor.
-- **Scan diario de `IDEM#` buscando `creado_en` de hace 60 días.** Un
-  scan lee toda la tabla (contadores, ledger, `NUM#` sin TTL), y su
-  costo crece con el tiempo. Con los buckets por fecha, el job lee solo
-  lo que tiene que borrar.
-- **Bot de Discord que borre por antigüedad del canal.** Necesita un
-  token de bot con permiso "Gestionar mensajes" (más poder que el
-  webhook), un segundo secreto y, para listar mensajes, acceso de
-  lectura al canal. Descartado.
-
-**Costo:** USD 0 (§8.1). Sin límites pagos de Discord.
+Lo que sigue disponible sin código: los propietarios pueden borrar a mano
+un mensaje del canal; el `discord_message_id` queda 90 días en `IDEM#`.
 
 ### 10.4 Qué necesita de infra (resumen; detalle en §13)
 
@@ -963,9 +888,6 @@ obligación, y el costo es ~0. `budget-guard` no lo toca.
 - Una alarma de canal degradado sobre la línea de log `canal_fallido`,
   hacia un topic de **alertas operativas** separado del kill-switch
   (§5.5).
-- **Para el borrado a los 60 días (§10.3):** un Lambda nuevo
-  `discord-retention`, un schedule diario, su rol IAM y 2 alarmas más
-  (detalle en §13).
 
 ## 11. Decisiones del CTO/CEO
 
@@ -976,24 +898,28 @@ obligación, y el costo es ~0. `budget-guard` no lo toca.
 3. Registro seudonimizado: **90 días**.
 4. Alarma de flood → kill-switch con motivo `flood`; reactivación manual
    o el día 1.
-5. Q-F5: email y teléfono en `sessionStorage` del lado del cliente,
-   aprobado. No afecta al contrato.
+5. Q-F5: el teléfono en `sessionStorage` del lado del cliente, aprobado
+   (hasta la revisión 2 eran email y teléfono). No afecta al contrato.
 6. Q-F1: **máximo 100 líneas** por orden.
 7. Ley 25.326: no bloquea el diseño; se resuelve antes de producción.
 8. **Doble canal** mail + Discord, con la orden completa y los datos de
    contacto en Discord.
 9. **Falla parcial:** aceptada si al menos un canal entregó (AC-20,
    AC-25). Sin objeciones.
-10. **Borrado automático de los mensajes de Discord a los 60 días**
-    (AC-29), y **canal visible solo para los propietarios** (paso manual
-    de configuración).
+10. ~~Borrado automático de los mensajes de Discord a los 60 días~~
+    (AC-29) — **retirado el 2026-10-05**. Se mantiene el **canal visible
+    solo para los propietarios** (paso manual de configuración).
+11. **Recorte de datos del MVP (2026-10-05):** el formulario pide solo el
+    teléfono; RenovArte comparte el suyo (1130579528); sin aviso de
+    privacidad ni borrado a 60 días.
 
 **Pendientes (no bloquean el diseño):**
 
 1. **Umbrales anti-abuso** de §6.3.
 2. **Kill-switch al 100 % real:** OK con perder el copy de tope en ese
    caso extremo.
-3. **Reply-To con el email del visitante** (§6.1): sí (propuesta) o no.
+3. ~~**Reply-To con el email del visitante** (§6.1)~~ → **resuelto:** no
+   hay email del visitante, no hay `Reply-To` (revisión 3).
 4. **Retención del mail en la casilla** (Ley 25.326): política del
    negocio, fuera de este servicio.
 
@@ -1010,13 +936,11 @@ obligación, y el costo es ~0. `budget-guard` no lo toca.
    `check:leak`, logs sin URL y runbook de rotación (borrar y recrear el
    webhook y actualizar SSM). No expone los mensajes existentes.
 4. **Datos personales en Discord** (§7): más superficie para la Ley
-   25.326 (art. 12 y art. 21). Queda acotada a 60 días por el borrado
-   automático (§10.3). El caso residual es un webhook rotado antes de los
-   60 días: sus mensajes ya no se pueden borrar por API y el job alerta
-   para que se borren a mano.
-5. **El job de borrado falla varios días seguidos:** los mensajes quedan
-   más de 60 días. Alerta a partir del segundo día sin éxito y
-   recuperación automática desde el cursor.
+   25.326 (art. 12 y art. 21). Desde la revisión 3 el dato es solo el
+   teléfono y **no hay borrado automático**; riesgo aceptado por RenovArte
+   para el MVP. Mitigan el canal solo para propietarios y 2FA.
+5. ~~El job de borrado falla varios días seguidos~~ — retirado con el
+   borrado automático (revisión 3).
 6. **Pricing y límites sin verificar hoy** (SES, Discord): B1.
 7. **Ambos canales `incierto`** (§5.5): el visitante ve "no se envió"
    aunque la orden pudo haber llegado. Es mucho menos probable que antes
@@ -1057,25 +981,7 @@ obligación, y el costo es ~0. `budget-guard` no lo toca.
   en 5 min. Métrica y alarma entran en las 10 gratis (confirmar en I1
   que hay lugar para 2 alarmas).
 - Runbook de infra: cargar y rotar el webhook de Discord en SSM y forzar
-  un cold start. **Al rotar, avisar que los mensajes del webhook viejo
-  de menos de 60 días hay que borrarlos a mano** (§10.3).
-- **Lambda nuevo `discord-retention`** (§10.3): Node 22 arm64, mismo zip,
-  timeout 60 s, 128 MB, sin reserved concurrency, log group con 14 días.
-  Env vars: `ORDERS_TABLE`, `DISCORD_WEBHOOK_PARAM`,
-  `BORRADO_MAX_POR_CORRIDA=200`. No va en el kill-switch.
-- **Schedule** `cron(0 6 * * ? *)` UTC → `discord-retention` (mismo rol de
-  Scheduler que el reset, ampliado a este ARN, o uno propio).
-- **IAM de `discord-retention`:** logs de su propio group; DynamoDB
-  `GetItem`, `UpdateItem` y `DeleteItem` **solo** con `LeadingKeys` en
-  `BORRAR#*` (incluye `BORRAR#CURSOR`); `ssm:GetParameter` sobre el
-  parámetro del webhook. Nada más.
-- **IAM de `orders-http`:** su `UpdateItem` ya cubre `BORRAR#<fecha>`;
-  no hace falta nada nuevo.
-- **Deploy por OIDC (I11):** el rol de deploy suma el ARN del tercer
-  Lambda en `UpdateFunctionCode`/`GetFunction*`.
-- **2 alarmas más** hacia el topic de alertas operativas: `Errors` > 0
-  de `discord-retention` en 1 día, y un metric filter sobre
-  `{ $.evento = "retencion_discord" && ($.requieren_manual > 0 ||
-  $.pendientes_viejos > 0) }` (más `borrado_no_programado`). En total
-  son 4 alarmas (flood, canal fallido, 2 de retención), dentro de las 10
-  gratis si la cuenta tiene lugar (I1).
+  un cold start.
+- **Revisión 3:** ya **no** se crea el Lambda `discord-retention`, ni su
+  schedule, ni su IAM, ni sus 2 alarmas. El rol de deploy por OIDC (I11)
+  no necesita un tercer ARN.

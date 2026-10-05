@@ -2,6 +2,15 @@
 
 **Mockup:** https://claude.ai/artifact/AUebBaKqEXBV3xsJwDgiFL
 
+> **Enmienda 2026-10-05 (recorte de datos del MVP):** el formulario pide
+> **solo teléfono** y la confirmación, los banners y los `noscript` muestran
+> el **teléfono de RenovArte (1130579528)**. Se retira el aviso de
+> privacidad. El mockup de arriba **todavía muestra el formulario anterior**
+> (nombre, email/teléfono, dirección, localidad) y hay que actualizarlo;
+> donde este documento y el mockup difieran, rige este documento. El copy
+> nuevo de esta enmienda es propuesta, sujeta a aprobación del CTO/CEO
+> como todo copy nuevo.
+
 Prototipo de revisión operable (no es la implementación): ficha, grilla, chat
 con combos, carrito, formulario, confirmación y estados de error, en ancho
 móvil (390px) y escritorio, con y sin JS. El selector "Al enviar" simula cada
@@ -259,25 +268,20 @@ catálogo."
 
 ### Formulario "Tus datos"
 
-- `h2` "Tus datos" (Cormorant) + bajada: "Todos son obligatorios. De email
-  y teléfono, alcanza con uno."
-- Campos, en este orden (labels visibles arriba, nunca solo placeholder):
+- `h2` "Tu teléfono" (Cormorant) + bajada: "Es el único dato que
+  necesitamos. Te llamamos o te escribimos para coordinar el pago y el
+  envío." *(2026-10-05; antes "Tus datos")*
+- Un solo campo (label visible arriba, nunca solo placeholder). Sin
+  `fieldset`/`legend`, porque ya no hay grupo:
 
 | Campo | Tipo / atributos | Hint visible |
 |---|---|---|
-| Nombre y apellido | `text`, `autocomplete="name"` | — |
-| *Grupo* "¿Cómo te contactamos?" (`fieldset` + `legend`) | | "Completá al menos uno de los dos." |
-| ↳ Email | `email`, `autocomplete="email"`, `inputmode="email"` | — |
-| ↳ Teléfono | `tel`, `autocomplete="tel"`, `inputmode="tel"` | "Con código de área. Ej.: 11 5555 5555" |
-| Dirección | `text`, `autocomplete="street-address"` | "Calle, número, piso y depto." |
-| Localidad | `text`, `autocomplete="address-level2"` | "Ej.: Palermo, CABA" |
+| Teléfono | `tel`, `autocomplete="tel"`, `inputmode="tel"` | "Con código de área. Ej.: 11 5555 5555" |
 
 - Inputs: `rounded-lg border border-beige-300 bg-beige-50 px-3 py-2.5
   text-base` (16px, para que iOS no haga zoom al enfocar).
-- **Aviso de privacidad** (pregunta #9), justo arriba del botón, con un
-  ícono de candado en línea fina: "Usamos estos datos solo para contactarte
-  por este pedido." (el default de la spec, textual). No hay checkbox de
-  consentimiento; ver #E.
+- **Sin aviso de privacidad** *(retirado 2026-10-05, pregunta #9)*. Tampoco
+  hay checkbox de consentimiento.
 - No hay campos de pago, envío, cupón ni comentario (AC-12, Alcance/Out).
 
 **Validación (AC-9):**
@@ -286,24 +290,17 @@ catálogo."
   intento fallido, cada campo se revalida al salir de él (blur), y su error
   desaparece apenas se corrige.
 - Reglas (el cliente solo ayuda; el repo de órdenes vuelve a validar):
-  nombre ≥2 caracteres; al menos email o teléfono; email con forma
-  `x@y.zz`; teléfono de 8 a 15 dígitos, que acepta espacios, guiones,
-  paréntesis y `+`; dirección ≥4 caracteres; localidad ≥2. Se ignoran los
-  espacios al principio y al final.
+  el teléfono es obligatorio y tiene de 8 a 15 dígitos, y acepta espacios,
+  guiones, paréntesis y `+`. Se ignoran los espacios al principio y al
+  final.
 - Al fallar: arriba del formulario aparece un **resumen de errores** ("Revisá
   estos datos antes de enviar:" y una lista donde cada ítem lleva al campo),
   y el foco va a ese resumen. Además, cada campo con error muestra el
   mensaje debajo, con ícono y `font-semibold`, y el input pasa a borde de
-  2px `sage-800` con `aria-invalid="true"`. Si falta el medio de contacto,
-  el error se muestra a nivel del `fieldset` y le agrega un filete
-  izquierdo de 3px.
+  2px `sage-800` con `aria-invalid="true"`.
 - Copy de errores (qué pasó y cómo se arregla):
-  - "Escribí tu nombre y apellido."
-  - "Dejanos un email o un teléfono para contactarte."
-  - "Revisá el email: tiene que tener la forma nombre@ejemplo.com."
+  - "Dejanos un teléfono para contactarte."
   - "Revisá el teléfono: escribilo con código de área, solo números (ej.: 11 5555 5555)."
-  - "Escribí la dirección: calle y número."
-  - "Escribí tu localidad."
 - Los datos del formulario **no** se guardan en el navegador entre visitas
   (solo el carrito persiste). Sí sobreviven dentro de la página a cualquier
   error de envío y a cualquier edición del carrito. Motivo: RNF-12 / AC-18,
@@ -394,10 +391,13 @@ el contador del header desaparece. Columna única centrada (`max-w-2xl`):
    por 1,6 s; si el portapapeles falla, se selecciona el texto). Debajo:
    **"Guardalo o sacale una captura: no te vamos a mandar la orden por
    mail."**
-3. `h2` "Qué sigue": "RenovArte te va a contactar a {email} o al {teléfono}
-   para coordinar el pago y el envío. En el sitio no se cobra nada." (se
-   muestran solo los medios que dejó).
-4. `h2` "¿Tenés una consulta sobre tu orden?": Email
+3. `h2` "Qué sigue": "RenovArte te va a contactar al {teléfono} para
+   coordinar el pago y el envío. En el sitio no se cobra nada." *(2026-10-05:
+   solo teléfono)*
+4. `h2` "¿Tenés una consulta sobre tu orden?": Teléfono de RenovArte
+   **1130579528** (link `tel:` + botón "Copiar"; *pendiente:* si RenovArte
+   confirma que es WhatsApp, se suma un link a `wa.me` con el número en
+   formato internacional), Email
    **renovartebyjuli@gmail.com** (link `mailto:` con asunto
    "Consulta por orden {número}" + botón "Copiar", porque `mailto:` no
    funciona en todos los dispositivos) e Instagram, por mensaje directo,
@@ -426,14 +426,14 @@ catálogo sigue 100% funcional sin JS (AC-21). Mismo patrón
 - **Ficha:** el botón "Agregar al carrito" está en el HTML desde el primer
   render pero inerte (`tabIndex=-1`, `pointer-events-none`) hasta hidratar.
   En un `<noscript>` debajo: "Para usar el carrito necesitás JavaScript
-  habilitado. También podés pedir este producto escribiendo a
-  renovartebyjuli@gmail.com o por mensaje directo en Instagram a
-  @renovarte_by_juli."
+  habilitado. También podés pedir este producto llamando al 1130579528,
+  escribiendo a renovartebyjuli@gmail.com o por mensaje directo en
+  Instagram a @renovarte_by_juli."
 - **`/carrito` sin JS:** el shell estático muestra `h1` "Tu carrito" y en
   `<noscript>`: "Para ver tu carrito y enviar una orden necesitás
   JavaScript habilitado en tu navegador. También podés hacer tu pedido
-  escribiendo a renovartebyjuli@gmail.com o por mensaje directo en
-  Instagram a @renovarte_by_juli." + "← Volver al catálogo". Con JS, antes
+  llamando al 1130579528, escribiendo a renovartebyjuli@gmail.com o por
+  mensaje directo en Instagram a @renovarte_by_juli." + "← Volver al catálogo". Con JS, antes
   de leer el estado, se ve solo el `h1` (sin un "vacío" que parpadee a
   "lleno").
 
@@ -467,8 +467,9 @@ catálogo sigue 100% funcional sin JS (AC-21). Mismo patrón
   - "No pudimos comunicarnos con RenovArte. Tu carrito y tus datos siguen
     acá: podés intentar de nuevo."
   - Botón **"Reintentar envío"** (reenvía con los mismos datos).
-  - "Si sigue sin funcionar, podés hacer el pedido por email o Instagram:"
-    y los canales (email + Copiar, Instagram MD).
+  - "Si sigue sin funcionar, podés hacer el pedido por teléfono, email o
+    Instagram:" y los canales (teléfono 1130579528 + Copiar, email +
+    Copiar, Instagram MD).
   - Botón **"Copiar detalle del pedido"**: copia un texto plano ("Pedido
     RenovArte / - {nombre} ({presentación}) x{N}: $ X / Total: $ Y"). Si el
     portapapeles falla, muestra el texto en un `textarea` de solo lectura
@@ -484,7 +485,7 @@ catálogo sigue 100% funcional sin JS (AC-21). Mismo patrón
   - **"Tu orden no se envió"**
   - "Este mes llegamos al límite de órdenes que podemos recibir desde el
     sitio. Tu carrito sigue guardado. Mientras tanto, podés hacer tu pedido
-    por email o por mensaje directo en Instagram:" + canales.
+    por teléfono, por email o por mensaje directo en Instagram:" + canales.
   - "Copiar detalle del pedido" + "Para pegarlo en tu mensaje."
   - **Sin "Reintentar"**: no va a funcionar hasta el mes siguiente, y
     ofrecerlo sería prometer algo falso.
@@ -550,8 +551,7 @@ tocó "Enviar", o alguien manipuló el navegador.
   `h1` del carrito.
 - **Formulario:** `<label for>` visible en cada campo; los hints y los
   errores se asocian con `aria-describedby`; `aria-invalid` en los campos
-  con error; `fieldset`/`legend` para el grupo email-o-teléfono; los
-  `autocomplete` de la tabla. `novalidate` en el `<form>` (los mensajes son
+  con error; el `autocomplete` de la tabla. `novalidate` en el `<form>` (los mensajes son
   los nuestros, no los del navegador). El resumen de errores es un
   contenedor con `tabindex="-1"`, etiquetado por su título, y cada ítem es
   un botón que enfoca el campo.
@@ -571,10 +571,10 @@ tocó "Enviar", o alguien manipuló el navegador.
 | Elemento en pantalla | Fuente |
 |---|---|
 | Nombre, presentación y precio en el carrito, la confirmación y el detalle copiado | `products.json` vigente (`nombre`, `presentacion`, `precio_venta`), nunca texto libre (AC-1, AC-6, AC-15) |
-| Campos obligatorios: nombre, email y/o teléfono, dirección, localidad | Alcance y AC-9 |
-| "Usamos estos datos solo para contactarte por este pedido." | Default textual de la pregunta #9 |
+| Campo obligatorio: solo teléfono | Alcance y AC-9 (enmienda 2026-10-05) |
+| ~~Aviso de privacidad~~ | Retirado 2026-10-05 (pregunta #9) |
 | Número de orden, aclaración de que pago y envío se coordinan después, canales de consulta | AC-10 |
-| renovartebyjuli@gmail.com como email visible | Default de la pregunta #3 |
+| Teléfono 1130579528, renovartebyjuli@gmail.com e Instagram como canales visibles | Pregunta #3 (resuelta 2026-10-05) |
 | @renovarte_by_juli, por MD de Instagram | Alcance, AC-10 y AC-22 (confirmado 2026-09-30c) |
 | "Guardalo o sacale una captura: no te vamos a mandar la orden por mail." | Deriva de AC-11 (sin copia al visitante) |
 | Todo el resto del copy (labels, hints, errores, avisos, banners, estados vacíos, "Copiar detalle del pedido") | **Autoría UX**: propuesta de este documento, sujeta a aprobación del CTO/CEO como cualquier copy nuevo |

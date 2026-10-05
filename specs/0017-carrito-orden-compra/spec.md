@@ -1,10 +1,41 @@
 # 0017 — Carrito y orden de compra (catálogo + combos de Colibrí → mail de RenovArte)
 
-**Status:** Diseño aprobado (Fase 3, 2026-10-01) — implementación no iniciada
+**Status:** Diseño aprobado (Fase 3, 2026-10-01), **enmendado el 2026-10-05**
+(el formulario pide solo teléfono; ver la precisión de esa fecha) —
+implementación del frontend recién iniciada (F1)
 **PRD:** RF-15, RF-16, RF-17, RF-18, RF-19, RNF-10, RNF-11, RNF-12, RNF-13, RNF-14
 (enmienda 2026-09-30, precisiones 2026-09-30b, 2026-09-30c, 2026-09-30d,
-2026-09-30e y 2026-09-30f a
+2026-09-30e, 2026-09-30f y 2026-10-05 a
 [PRD-catalogo-renovarte.md](../../renovarte-catalogo/docs/PRD/PRD-catalogo-renovarte.md))
+
+> **Precisión (2026-10-05) — recorte de alcance de datos personales (MVP):**
+> el CTO/CEO del proyecto habló con la CEO de RenovArte, que pidió reducir
+> lo que se le pide al visitante. Resumen textual del pedido: por el
+> momento **solo se pide el número de teléfono** del visitante, y
+> **RenovArte comparte el suyo** para coordinar el pago y el envío; en este
+> MVP no se prioriza la protección de datos personales, así que se acordó
+> **pedir menos datos**. Teléfono de RenovArte: **1130579528** (se asume
+> que sirve para llamada y WhatsApp; a confirmar con RenovArte).
+>
+> Interpretación registrada (reflejada en Alcance, Out, Contexto, AC-9,
+> AC-10, AC-13, AC-18, AC-22, AC-23, AC-28 y Preguntas abiertas):
+> (1) el formulario pide **un único campo obligatorio: teléfono**; ya no se
+> piden nombre, email, dirección ni localidad (reemplaza la decisión
+> 2026-09-30b-1); (2) la confirmación, los avisos de falla y los `noscript`
+> muestran el **teléfono de RenovArte** como medio principal de
+> coordinación, además del email y el MD de Instagram de siempre (quedan
+> como consulta alternativa); (3) **se retiran** el borrado automático de
+> Discord a los 60 días (AC-29), la política de borrado de Gmail a los 60
+> días (AC-31) y el aviso de privacidad del formulario (#9 y el punto (a)
+> de #12); (4) **se mantienen**, por costo casi nulo y porque ya están
+> diseñados: canal de Discord solo para propietarios (AC-30), webhook como
+> secreto (AC-26), registro seudonimizado de 90 días (AC-27), que los datos
+> de contacto no se publiquen ni se commiteen (AC-18) y que el navegador
+> guarde solo el teléfono, solo en la sesión de la pestaña (AC-28). El
+> teléfono sigue siendo un dato personal; la consulta profesional opcional
+> (#12b) queda como pendiente no bloqueante. Consecuencia de producto: sin
+> nombre, RenovArte contacta por teléfono a "quien dejó el número" (el
+> número de orden identifica el pedido).
 
 > **Precisión (2026-09-30f):** el CTO/CEO decidió la retención en la
 > casilla de Gmail (pregunta #12). Textual:
@@ -178,42 +209,40 @@ envío por fuera del sitio.
 - **El carrito sobrevive a la navegación** dentro del sitio (ir de la
   ficha a la grilla, abrir/cerrar el chat) y a recargar la página, en el
   mismo navegador del mismo dispositivo.
-- **Generar la orden:** desde el carrito, el visitante completa sus datos
-  de contacto — **obligatorios: nombre, al menos un medio de contacto
-  (email y/o teléfono), dirección y localidad** (decisión CTO/CEO
-  2026-09-30b; si email y teléfono son ambos obligatorios o alcanza con
-  uno queda como pregunta no bloqueante #6) — y confirma. Al confirmar:
+- **Generar la orden:** desde el carrito, el visitante completa **un único
+  dato de contacto obligatorio: su teléfono** (decisión 2026-10-05; antes
+  se pedían nombre, email/teléfono, dirección y localidad) y confirma. Al
+  confirmar:
   - Se crea la orden en el repo nuevo de órdenes y RenovArte recibe un
     mail en **renovartebyjuli@gmail.com** con: número de orden,
-    fecha/hora, datos de contacto del visitante (incluidas dirección y
-    localidad), cada producto (nombre, presentación, cantidad, precio
-    unitario, subtotal) y total.
+    fecha/hora, el teléfono del visitante, cada producto (nombre,
+    presentación, cantidad, precio unitario, subtotal) y total.
   - **Además, siempre** (no solo si el mail falla — 2026-09-30d), la
     misma orden completa, con el **mismo número de orden** y los mismos
     datos (contacto incluido), llega como mensaje a un **canal privado
     nuevo de Discord de RenovArte, dedicado solo a órdenes** (distinto del
     canal técnico de la POC de eventos de la spec 0001), visible **solo
-    para los propietarios** de RenovArte; cada mensaje de orden se
-    **borra automáticamente a los 60 días** (2026-09-30e).
+    para los propietarios** de RenovArte. *(El borrado automático a los 60
+    días de 2026-09-30e se retiró el 2026-10-05.)*
   - Un reintento (del visitante o del sistema) **nunca duplica** la orden:
     ni un segundo mail ni un segundo mensaje de Discord para el mismo
     pedido.
   - El visitante ve una confirmación en pantalla con **el número de
     orden**, un texto claro de que **pago y envío se coordinan después**
-    (RenovArte lo contacta), y los canales para consultas sobre la orden:
-    **email de RenovArte y MD de Instagram a @renovarte_by_juli**.
+    (RenovArte lo contacta por teléfono), y los canales para consultas
+    sobre la orden: **el teléfono de RenovArte (1130579528), el email y el
+    MD de Instagram a @renovarte_by_juli**.
   - **El visitante no recibe copia de la orden por mail** (decisión
     CTO/CEO 2026-09-30b).
   - El carrito queda vacío.
   - Si el visitante recarga la página de confirmación, sigue viendo su
     número de orden. Para eso, en su navegador puede quedar **solo** el
-    medio de contacto (email/teléfono) y **solo durante la sesión de esa
-    pestaña**, mientras esté en /carrito; al salir de /carrito o cerrar la
+    teléfono y **solo durante la sesión de esa pestaña**, mientras esté en /carrito; al salir de /carrito o cerrar la
     pestaña se borra (2026-09-30d).
 - **Registro de órdenes seudonimizado** en el repo nuevo: cada orden queda
   registrada **hasta 90 días y sin datos personales** del visitante
-  (2026-09-30d); los datos de contacto viven solo en la casilla de mail y
-  en el canal privado de Discord.
+  (2026-09-30d); el teléfono vive solo en la casilla de mail y en el canal
+  privado de Discord.
 - **Precios de la orden = precios del catálogo publicado vigente** (el
   mismo `precio_venta` que se ve en grilla/ficha/combos). La orden que
   llega por mail no puede traer un producto o precio que no exista en el
@@ -237,8 +266,8 @@ envío por fuera del sitio.
   de pago en el formulario.
 - **Definición/cálculo de envío** (costo, zona, método, retiro en local)
   — decisión explícita del CTO/CEO: "la forma de envío también lo
-  coordinamos después". Dirección y localidad se piden como **dato de
-  contacto** para coordinar después, no para calcular ni elegir envío.
+  coordinamos después". La dirección y la localidad **ya no se piden**
+  (2026-10-05): se acuerdan por teléfono junto con el pago y el envío.
 - **Copia de la orden al visitante por mail**, o cualquier otro mail
   saliente hacia el visitante (decisión CTO/CEO 2026-09-30b).
 - Stock/disponibilidad en tiempo real y reserva de stock al generar la
@@ -315,15 +344,16 @@ envío por fuera del sitio.
   la 0016 (y la PRD §4.2) dejaban fuera ("Compra, carrito o checkout
   desde el chat"), ahora acotado a *carrito + orden*, sin checkout/pago.
 - **Datos personales:** primera feature del proyecto que recibe datos
-  personales del visitante (nombre, contacto, dirección, localidad). No
-  existen hoy en ningún repo; RNF-12 fija que no se publican ni se
-  commitean. *(2026-09-30d)* Lugares donde pueden quedar, y por cuánto:
-  (a) casilla de Gmail de RenovArte — borrado a los 60 días como
-  política operativa de RenovArte (2026-09-30f, AC-31); (b) **canal privado de Discord de órdenes — borrado automático a
-  los 60 días** (2026-09-30e, AC-29), visible solo para los propietarios
-  de RenovArte (AC-30); (c) navegador del visitante — solo
-  email/teléfono, solo en la sesión de la pestaña mientras está en
-  /carrito; (d) registro del repo nuevo — **ningún dato personal**
+  personales del visitante, ahora **solo el teléfono** (2026-10-05; antes
+  nombre, contacto, dirección y localidad). No existen hoy en ningún repo;
+  RNF-12 fija que no se publican ni se commitean. *(2026-09-30d,
+  recortado 2026-10-05)* Lugares donde pueden quedar: (a) casilla de Gmail
+  de RenovArte — **sin plazo de borrado** (la política de 60 días de
+  2026-09-30f se retiró); (b) **canal privado de Discord de órdenes —
+  sin borrado automático** (el de 60 días de 2026-09-30e se retiró),
+  visible solo para los propietarios de RenovArte (AC-30); (c) navegador
+  del visitante — solo el teléfono, solo en la sesión de la pestaña
+  mientras está en /carrito; (d) registro del repo nuevo — **ningún dato personal**
   (seudonimizado), 90 días; (e) en tránsito por el proveedor de mail. Ver
   Riesgos (Ley 25.326).
 - **Canal secundario Discord (2026-09-30d):** la entrega a Discord es
@@ -333,9 +363,9 @@ envío por fuera del sitio.
   RNF-14. Cómo se garantiza la no-duplicación ante reintentos, y cómo se
   representa una orden larga si no entra en un solo mensaje de Discord
   (sin perder contenido ni duplicar la orden), es de la Fase 3.
-  *(2026-09-30e)* El mecanismo del borrado automático a los 60 días
-  (AC-29) también es de la Fase 3; la restricción de acceso al canal
-  (AC-30) es un paso manual de configuración en Discord, no código.
+  *(2026-09-30e)* La restricción de acceso al canal (AC-30) es un paso
+  manual de configuración en Discord, no código. *(2026-10-05)* Ya no hay
+  mecanismo de borrado automático (AC-29 retirado).
 - **Dirección de destino vs. email de contacto visible:** como el
   CTO/CEO quiere que el visitante pueda escribir por email ante
   consultas, la dirección de RenovArte puede ser pública. La protección
@@ -343,8 +373,9 @@ envío por fuera del sitio.
   destinatario del mail de la orden quede fijado del lado del repo de
   órdenes y **no pueda ser elegido ni alterado desde el navegador** (el
   endpoint no acepta destinatario arbitrario → no sirve como relay de
-  spam). Email de contacto que se muestra en la confirmación: propuesta
-  por defecto, el mismo renovartebyjuli@gmail.com (Pregunta abierta #3).
+  spam). Canales de contacto que se muestran en la confirmación (2026-10-05):
+  el **teléfono 1130579528** (principal), el email
+  renovartebyjuli@gmail.com y el MD de Instagram (Pregunta abierta #3).
 - **UI/UX:** todo lo visible (dónde vive el acceso al carrito, cómo se
   agrega desde grilla/ficha/card de combo, formulario, confirmación,
   estados de error) pasa por el `ux-agent` antes de cualquier diseño de
@@ -375,27 +406,29 @@ envío por fuera del sitio.
 7. **AC-7 (RF-16):** Agregar un combo al carrito no cierra el chat ni
    borra la conversación en curso.
 8. **AC-8 (RF-17):** Con el carrito vacío no se puede generar una orden.
-9. **AC-9 (RF-17):** Para generar la orden el visitante tiene que
-   completar nombre, al menos un medio de contacto (email y/o teléfono),
-   dirección y localidad; si falta alguno o tiene un formato inválido, la
-   orden no se envía y se le indica qué corregir.
-10. **AC-10 (RF-17):** Al confirmar una orden válida, el visitante ve una
-    confirmación con el número de orden, un texto que aclara que RenovArte
-    lo va a contactar para coordinar pago y envío, y los canales para
-    consultas sobre la orden (email de RenovArte y MD de Instagram a
+9. **AC-9 (RF-17)** *(modificado 2026-10-05)***:** Para generar la orden
+   el visitante tiene que completar su **teléfono**, que es el único dato
+   que se pide; si falta o tiene un formato inválido, la orden no se envía
+   y se le indica qué corregir. El formulario no tiene campos de nombre,
+   email, dirección ni localidad.
+10. **AC-10 (RF-17)** *(modificado 2026-10-05)***:** Al confirmar una orden
+    válida, el visitante ve una confirmación con el número de orden, un
+    texto que aclara que RenovArte lo va a contactar por teléfono para
+    coordinar pago y envío, y los canales para consultas sobre la orden
+    (el teléfono de RenovArte 1130579528, el email y el MD de Instagram a
     @renovarte_by_juli); el carrito queda vacío.
 11. **AC-11 (RF-17):** El visitante no recibe ningún mail como
     consecuencia de generar la orden (no hay copia al cliente).
 12. **AC-12 (RF-17):** En ningún paso del flujo se pide, muestra ni
     procesa un medio de pago, ni se pide elegir o se calcula un costo o
     método de envío.
-13. **AC-13 (RF-18)** *(modificado 2026-09-30d)***:** Por cada orden
+13. **AC-13 (RF-18)** *(modificado 2026-09-30d y 2026-10-05)***:** Por cada orden
     confirmada llega exactamente un mail a renovartebyjuli@gmail.com —
     también cuando hubo reintentos (AC-24) —, con: el mismo número de
-    orden que vio el visitante, fecha/hora, sus datos de contacto
-    (incluidas dirección y localidad), cada producto (nombre,
-    presentación, cantidad, precio unitario, subtotal) y el total —
-    coincidiendo con lo que el visitante tenía en el carrito al confirmar.
+    orden que vio el visitante, fecha/hora, su teléfono, cada
+    producto (nombre, presentación, cantidad, precio unitario, subtotal) y
+    el total — coincidiendo con lo que el visitante tenía en el carrito al
+    confirmar.
     (Excepción: el caso de falla parcial de AC-25, donde el mail no pudo
     entregarse y la orden llegó solo por Discord.)
 14. **AC-14 (RNF-10):** `renovarte-catalogo` no incorpora ningún endpoint,
@@ -445,16 +478,15 @@ envío por fuera del sitio.
     órdenes alcanza el tope de USD 20/mes, no se genera gasto adicional;
     el visitante que intenta generar una orden ve el mismo tratamiento de
     AC-20 (orden no enviada, carrito intacto) más los canales de contacto
-    alternativos (email / MD de Instagram a @renovarte_by_juli), y el
-    resto del sitio sigue funcionando (AC-21).
-23. **AC-23 (RF-19)** *(nuevo 2026-09-30d)***:** Por cada orden
+    alternativos (teléfono 1130579528, email y MD de Instagram a
+    @renovarte_by_juli), y el resto del sitio sigue funcionando (AC-21).
+23. **AC-23 (RF-19)** *(nuevo 2026-09-30d, modificado 2026-10-05)***:** Por cada orden
     confirmada, además del mail, llega **siempre** (aunque el mail se haya
     entregado bien) la orden al canal privado de Discord de órdenes de
     RenovArte, con el **mismo número de orden** que vio el visitante y que
-    figura en el mail, fecha/hora, datos de contacto (nombre,
-    email/teléfono, dirección, localidad), cada producto (nombre,
-    presentación, cantidad, precio unitario, subtotal) y el total — el
-    mismo contenido que el mail. Nada de la orden llega al canal técnico
+    figura en el mail, fecha/hora, el teléfono del visitante,
+    cada producto (nombre, presentación, cantidad, precio unitario,
+    subtotal) y el total — el mismo contenido que el mail. Nada de la orden llega al canal técnico
     de la POC de eventos (spec 0001).
 24. **AC-24 (RF-18, RF-19)** *(nuevo 2026-09-30d)***:** Si la misma orden
     se reenvía (el visitante reintenta tras un error o un corte de red,
@@ -479,32 +511,28 @@ envío por fuera del sitio.
     teléfono, ni dirección, ni localidad): se puede ubicar una orden por
     su número, pero no identificar desde ahí a quién pertenece. Pasados 90
     días, la orden ya no está en el registro.
-28. **AC-28 (RNF-12, RF-17)** *(nuevo 2026-09-30d)***:** Tras confirmar,
+28. **AC-28 (RNF-12, RF-17)** *(nuevo 2026-09-30d, modificado 2026-10-05)***:** Tras confirmar,
     recargar la página de confirmación sigue mostrando el número de orden.
     Del formulario, en el navegador del visitante solo puede quedar el
-    medio de contacto (email/teléfono), solo para esa pestaña y mientras
-    permanezca en /carrito: al salir de /carrito o cerrar la pestaña, no
-    queda ningún dato de contacto guardado en el navegador. Nombre,
-    dirección y localidad no se guardan en el navegador, y el carrito
-    persistido (AC-5) nunca contiene datos de contacto.
-29. **AC-29 (RNF-12, RF-19)** *(nuevo 2026-09-30e)***:** Cada mensaje de
+    teléfono, solo para esa pestaña y mientras permanezca en /carrito: al
+    salir de /carrito o cerrar la pestaña, no queda ningún dato de contacto
+    guardado en el navegador. El carrito persistido (AC-5) nunca contiene
+    datos de contacto.
+29. ~~**AC-29 (RNF-12, RF-19)** *(nuevo 2026-09-30e)*: Cada mensaje de
     orden publicado en el canal privado de Discord se borra
-    automáticamente a los 60 días de publicado, sin intervención manual:
-    pasado ese plazo, la orden (y sus datos de contacto) ya no aparece en
-    el canal. Si una orden ocupó más de un mensaje, se borran todos.
+    automáticamente a los 60 días de publicado.~~ **Retirado el
+    2026-10-05** (recorte de datos personales del MVP). El número se
+    conserva para no renumerar las referencias.
 30. **AC-30 (RNF-12)** *(nuevo 2026-09-30e)***:** El canal de Discord de
     órdenes solo es visible para los propietarios de RenovArte: una cuenta
     del servidor de Discord que no sea de un propietario no puede ver el
     canal ni su historial. Verificación manual (paso de configuración de
     Discord, no código), con 2FA recomendado en las cuentas de los
     propietarios.
-31. **AC-31 (RNF-12)** *(nuevo 2026-09-30f)***:** Política de retención
-    de la casilla: los mails de órdenes en renovartebyjuli@gmail.com no
-    permanecen más de 60 días (tampoco en la papelera). Verificación
-    manual, como AC-30: es un paso operativo de RenovArte (a mano, o un
-    filtro/Apps Script de Google configurado fuera de los repos del
-    proyecto), no código de esta spec ni algo que verifique el tester
-    automatizado.
+31. ~~**AC-31 (RNF-12)** *(nuevo 2026-09-30f)*: Política de retención de
+    la casilla: los mails de órdenes en renovartebyjuli@gmail.com no
+    permanecen más de 60 días.~~ **Retirado el 2026-10-05**, igual que
+    AC-29.
 
 ## Preguntas abiertas
 
@@ -555,6 +583,19 @@ envío por fuera del sitio.
 - ~~#12 (parcial) — retención en la casilla de Gmail~~ → **borrar los
   mails de órdenes a los 60 días**, como política operativa (AC-31).
 
+### Resueltas por el CTO/CEO (2026-10-05)
+
+- ~~Datos de contacto (reemplaza 2026-09-30b-1)~~ → **solo teléfono**;
+  sin nombre, email, dirección ni localidad.
+- ~~#6 — email y teléfono~~ → **solo teléfono**, obligatorio.
+- ~~#3 — email de contacto visible~~ → se muestra además el **teléfono de
+  RenovArte 1130579528** (principal); email e Instagram quedan como
+  alternativa.
+- ~~#9 — aviso de privacidad~~ y ~~#12(a)~~ → **retirados** para el MVP.
+- ~~AC-29 y AC-31 (borrado a 60 días)~~ → **retirados**.
+- **Abierto, no bloqueante:** confirmar con RenovArte que 1130579528 sirve
+  para llamada y WhatsApp (se asumió que sí).
+
 ### Bloquean la Fase 3 (diseño/RFC)
 
 Ninguna. (Lo que queda de #12 no bloquea el diseño, pero son pasos antes
@@ -562,17 +603,17 @@ de salir a producción.)
 
 ### No bloquean diseño (tienen default propuesto; se ajustan en UX/implementación)
 
-3. **Email de contacto visible** en la confirmación: default propuesto,
-   el mismo renovartebyjuli@gmail.com (compatible con RNF-12
+3. ~~**Email de contacto visible** en la confirmación~~ → **resuelta
+   2026-10-05:** teléfono 1130579528 como medio principal, más
+   renovartebyjuli@gmail.com e Instagram (compatible con RNF-12
    reformulado, ver Contexto).
 4. **Agregar desde la card de la grilla**, además de la ficha: lo decide
    el `ux-agent` (AC-1 solo exige la ficha).
 5. **Combo en la orden: ¿agrupado o aplanado?** Default: aplanado — el
    carrito y el mail listan productos individuales; sin línea ni precio
    especial de combo.
-6. **Email y teléfono: ¿ambos obligatorios o alcanza con uno?** Default:
-   al menos uno de los dos (AC-9). Como el visitante no recibe mail,
-   RenovArte necesita al menos una vía para contactarlo.
+6. ~~**Email y teléfono: ¿ambos obligatorios o alcanza con uno?**~~ →
+   **resuelta 2026-10-05:** solo teléfono, obligatorio (AC-9).
 7. **Formato del número de orden** (secuencial, fecha+sufijo, aleatorio
    corto): decisión de diseño; producto solo exige que sea el mismo en
    pantalla y en el mail (AC-10/AC-13) y fácil de dictar por
@@ -581,34 +622,24 @@ de salir a producción.)
    desactualizado: decisión de diseño/UX, siempre que el mail nunca
    refleje un precio distinto del publicado y el visitante vea el precio
    final antes o en la confirmación.
-9. **Aviso de privacidad/consentimiento** sobre el uso de los datos
-   (ahora incluye dirección; Ley 25.326, Argentina): default — una línea
-   en el formulario ("usamos estos datos solo para contactarte por este
-   pedido"); copy final sujeto a aprobación del CTO/CEO. *(2026-09-30d)*
-   El copy debería mencionar que el pedido se recibe por mail y por un
-   canal privado de mensajería de RenovArte (ver #12).
+9. ~~**Aviso de privacidad/consentimiento** sobre el uso de los datos~~
+   → **retirada 2026-10-05:** el formulario no muestra aviso de privacidad
+   en el MVP. Si más adelante se vuelve a pedir más datos, se reabre.
 10. **Vencimiento del carrito guardado** en el navegador: default — sin
     vencimiento; si un producto del carrito ya no existe en el catálogo
     vigente, se le muestra al visitante y no se incluye en la orden
     (coherente con AC-15).
 11. **Nombre del repo nuevo:** tentativo, a definir en Fase 3.
 12. **Ley 25.326 — datos personales en Discord y Gmail (2026-09-30d,
-    actualizada 2026-09-30e/f), pasos antes de producción:** con el canal
+    actualizada 2026-09-30e/f y recortada 2026-10-05):** con el canal
     secundario, Discord es **un segundo lugar (además de Gmail) donde
-    quedan datos personales del visitante** (nombre, email/teléfono,
-    dirección, localidad), en un servicio de terceros fuera de Argentina.
-    **Ya decidido:** borrado automático de los mensajes de Discord a los
-    60 días (AC-29) y canal visible solo para los propietarios, con 2FA
-    recomendado (AC-30) — 2026-09-30e; borrado de los mails de órdenes en
-    Gmail a los 60 días como política operativa (AC-31) — 2026-09-30f.
-    **Sigue abierto, antes de producción (no bloquea diseño):** (a) el
-    **texto del aviso de privacidad** del formulario (#9), que mencione
-    que los datos se reciben por mail y por un canal privado de
-    mensajería de RenovArte, solo para coordinar el pedido; (b)
-    **consulta profesional opcional** sobre la inscripción de la base
-    ante la AAIP y la transferencia internacional (Gmail y Discord) —
-    esta spec no es asesoramiento legal. Nota: lo que Discord o Google conserven internamente tras un
-    borrado queda fuera del control de RenovArte.
+    queda el teléfono del visitante**, en un servicio de terceros fuera de
+    Argentina. **Vigente:** canal visible solo para los propietarios, con
+    2FA recomendado (AC-30). **Retirado el 2026-10-05:** el borrado a 60
+    días en Discord (AC-29) y en Gmail (AC-31), y el aviso de privacidad
+    (#9). **Sigue abierto, no bloqueante:** consulta profesional opcional
+    sobre la inscripción de la base ante la AAIP y la transferencia
+    internacional (Gmail y Discord); esta spec no es asesoramiento legal.
 13. ~~**Falla parcial (un canal sí, el otro no)**~~ → **resuelta
     2026-09-30e** (sin objeción del CTO/CEO): la orden se confirma al
     visitante si **al menos uno** de los dos canales la aceptó, y la falla
@@ -626,14 +657,13 @@ y §III.11 (no se crea en modo diseño). *(2026-09-30d)* El canal de
 Discord no cambia esto: la entrega a Discord es server-side desde el repo
 nuevo, sin costo, y no toca `renovarte-catalogo`.
 
-## Riesgos (2026-09-30d)
+## Riesgos (2026-09-30d, actualizado 2026-10-05)
 
 | Riesgo | Mitigación |
 |---|---|
 | El mail de la orden cae en spam y RenovArte no se entera (el servidor lo ve como "entregado") | Entrega **siempre** duplicada a un canal privado de Discord (RF-19, AC-23) |
-| Datos personales del visitante acumulados en Discord (y en Gmail) — Ley 25.326 | *(2026-09-30e)* Borrado automático en Discord a los 60 días (AC-29); canal visible solo para los propietarios, 2FA recomendado (AC-30); registro propio sin datos personales y 90 días (AC-27); *(2026-09-30f)* mails de órdenes en Gmail borrados a los 60 días, política operativa (AC-31). Antes de producción: texto del aviso de privacidad y consulta profesional opcional AAIP/transferencia internacional (Pregunta #12) |
-| *(2026-09-30f)* El borrado de Gmail depende de un paso manual y puede olvidarse | AC-31 de verificación manual; automatizable más adelante con un filtro/Apps Script de Google, fuera de los repos del proyecto |
-| El borrado automático de Discord falla en silencio y los datos quedan más de 60 días | AC-29 es verificable; cómo se detecta una falla del borrado, Fase 3 |
+| El teléfono del visitante queda acumulado en Discord y en Gmail sin plazo de borrado — Ley 25.326 | *(2026-10-05, recorte del MVP, riesgo aceptado por RenovArte)* Canal visible solo para los propietarios, 2FA recomendado (AC-30); registro propio sin datos personales y 90 días (AC-27). Retirados: borrado a 60 días (AC-29, AC-31) y aviso de privacidad. Pendiente no bloqueante: consulta profesional opcional AAIP/transferencia internacional (#12) |
+| Sin nombre, RenovArte no sabe a quién pedirle al llamar | El número de orden identifica el pedido; RenovArte comparte su propio teléfono y el visitante también puede escribir primero |
 | Filtración del webhook: cualquiera podría publicar mensajes falsos en el canal de órdenes | Webhook como secreto server-side (AC-26); si se filtra, se regenera desde Discord |
 | Doble entrega por reintentos (doble clic, corte de red, reintento del sistema) genera órdenes duplicadas | AC-24: mismo número de orden, un mail y un mensaje por orden |
 | Un canal cae y el otro no: orden confirmada que llega por un solo lado, o bloqueo innecesario | AC-25: se confirma con "al menos uno" (resuelto 2026-09-30e, Pregunta #13) |
