@@ -35,7 +35,7 @@ viven en [`CLAUDE.md`](../CLAUDE.md) y aplican a todos los repos por igual.
 2. **Ningún secreto (API key, token, credencial) se commitea en ningún
    repo.** Siempre env var / secret de CI, nunca en código ni en docs de
    ejemplo con un valor real.
-   *Decisiones:* [ADR-0010](../docs/decisions/ADR-0010-notificaciones-event-driven.md), [ADR-0011](../docs/decisions/ADR-0011-aws-terraform-plataforma-runtime.md), [ADR-0017](../docs/decisions/ADR-0017-datos-personales-ordenes.md).
+   *Decisiones:* [ADR-0010](../docs/decisions/ADR-0010-notificaciones-event-driven.md), [ADR-0011](../docs/decisions/ADR-0011-aws-terraform-plataforma-runtime.md), [ADR-0020](../docs/decisions/ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md).
 3. **Un repo nuevo nunca invalida una invariante ya cerrada de otro
    repo.** Si una feature cross-repo parece requerir violar una invariante
    de un repo existente (ej. "no runtime backend" de `renovarte-catalogo`

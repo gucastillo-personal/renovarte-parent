@@ -4,6 +4,19 @@ Estas reglas aplican a cualquier sesión de Claude Code (o cualquier agente)
 que trabaje en este proyecto — renovarte-parent y todos sus submódulos —, no
 solo a la sesión que las escribió.
 
+## Plugin `agentic-sdd`
+
+El flujo de trabajo con agentes viene del plugin privado
+[`agentic-sdd`](https://github.com/gucastillo-personal/agentic-sdd),
+habilitado para este repo en `.claude/settings.json`: el skill
+`/agentic-sdd:feature` y los agentes `agentic-sdd:product-agent`,
+`agentic-sdd:ux-agent`, `agentic-sdd:frontend-agent`,
+`agentic-sdd:backend-agent`, `agentic-sdd:ai-agent`,
+`agentic-sdd:devops-agent` y `agentic-sdd:tester-agent`. En este archivo se
+los nombra sin el prefijo. Las reglas de abajo se suman a las del plugin;
+nunca las relajan. El plugin trae un hook que bloquea técnicamente
+`gh pr merge` y el push a `main`.
+
 ## Nunca commitear ni pushear directo a `main`
 
 Ningún agente commitea ni pushea directo sobre `main` — ni en
@@ -37,7 +50,7 @@ verde. No uses `gh pr merge` ni equivalentes.
 
 ## Toda modificación de UI/UX pasa siempre por el agente UX
 
-En el flujo `/feature` (y en cualquier otro flujo de este proyecto que use
+En el flujo `/agentic-sdd:feature` (y en cualquier otro flujo de este proyecto que use
 subagentes), cualquier cambio que toque una página, un layout, un patrón de
 interacción o la experiencia visible por el usuario final — no solo
 features nuevas, también ajustes o mejoras sobre pantallas existentes —
@@ -54,7 +67,7 @@ reordenar o separar filtros/pills existentes).
 Cuando el `ux-agent` comparte su artefacto/maqueta (`ux.md` y/o el Artifact
 visual), el diseño no se da por aprobado ni se pasa a `frontend-agent`/
 `ai-agent` para implementarlo hasta que un humano lo revise y lo apruebe
-explícitamente — igual que el resto de los gates de fase de `/feature`, el
+explícitamente — igual que el resto de los gates de fase de `/agentic-sdd:feature`, el
 silencio o un "ok" ambiguo no cuentan como aprobación. Esto aplica aunque
 el `ux-agent` no haya encontrado ninguna divergencia respecto al plan
 técnico existente.
@@ -62,7 +75,7 @@ técnico existente.
 ## Descubrimiento de contexto (base de conocimiento)
 
 Antes de diseñar o implementar cualquier cosa en este proyecto — dentro o
-fuera de `/feature` —, el agente arma su contexto en este orden, en vez de
+fuera de `/agentic-sdd:feature` —, el agente arma su contexto en este orden, en vez de
 inferirlo del código o de documentos históricos (`PLAN.md` es histórico):
 
 1. [`manifest.yaml`](./manifest.yaml): qué repos hay, qué hace cada uno,

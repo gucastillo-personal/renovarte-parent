@@ -20,9 +20,10 @@ implementado**.
 - La orden se entrega por **dos canales**, mail y canal privado de Discord,
   con el mismo número de orden. Se acepta si llegó **al menos por uno**, y
   reintentar nunca la duplica.
-- **Datos personales (Ley 25.326)**: el registro de la orden queda
-  seudonimizado 90 días; los mensajes con datos de contacto se borran a
-  los 60 días.
+- **Datos personales (Ley 25.326)**: el formulario pide solo nombre y
+  apellido más teléfono; el registro de la orden queda seudonimizado 90
+  días y los mensajes de Discord y Gmail no se borran automáticamente en
+  el MVP ([ADR-0020](../decisions/ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md)).
 - Mismo tope de USD 20/mes, con ledger y kill-switch, que el chat.
 
 ## Dónde se ve funcionando

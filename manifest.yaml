@@ -12,7 +12,7 @@
 #   "¿De qué depende X?" = qué contratos consume X.
 # - El schema de cada contrato vive en un único documento (`schema`); este
 #   archivo no lo copia.
-# - Se actualiza en la Fase 6 de /feature (cierre de conocimiento) cuando una
+# - Se actualiza en la Fase 6 de /agentic-sdd:feature (cierre de conocimiento) cuando una
 #   feature agrega un repo, un contrato o un proveedor, o cambia un status.
 
 version: 1
@@ -42,6 +42,7 @@ repositories:
       prd: docs/PRD/PRD-catalogo-renovarte.md
       rfc: docs/rfc/0001-arquitectura-catalogo.md
       specs: specs/
+      brand: docs/brand.md
     foundational_decisions: [ADR-0002]
 
   renovarte-pipeline:
@@ -122,7 +123,7 @@ repositories:
     deploy: terraform (manual)
     domains: [ordenes]
     providers: [aws, discord]
-    foundational_decisions: [ADR-0005, ADR-0006, ADR-0011, ADR-0016, ADR-0017]
+    foundational_decisions: [ADR-0005, ADR-0006, ADR-0011, ADR-0016, ADR-0020]
 
 contracts:
   products-json:

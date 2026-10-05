@@ -32,3 +32,9 @@ cada repo, y una persona aplica los cambios a mano.
   (`rfc-servicio-ordenes.md` §6.1, spec 0017).
 - Las credenciales van como secretos de CI o en el entorno local, nunca en
   el repo (constitution root §I.2).
+- **Secretos de runtime**: en SSM SecureString con `value_wo`
+  ([ADR-0019](../decisions/ADR-0019-secretos-en-ssm.md)). `renovarte-events`
+  y `renovarte-colibri-rag` todavía los tienen como variables de entorno
+  vía `.tfvars`: su `terraform.tfstate` local contiene secretos.
+- **ARNs entre repos**: se copian a mano (ADR-0011) y se documentan en la
+  sección "Coordinación de ARNs" del README de cada repo que los necesita.
