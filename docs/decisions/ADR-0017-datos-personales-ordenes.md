@@ -1,7 +1,7 @@
 ---
 id: ADR-0017
 title: "Datos personales de órdenes: procesados en memoria, registro seudonimizado 90 días, mensajes con contacto borrados a los 60"
-status: Accepted
+status: Superseded
 date: 2026-09-30
 deciders: CTO/CEO
 level: L3
@@ -11,7 +11,7 @@ providers: ["[[provider-aws]]", "[[provider-discord]]"]
 origin: "[[specs/0017-carrito-orden-compra/spec|0017]]"
 supersedes: []
 extends: ["[[ADR-0006-servicio-ordenes]]"]
-superseded_by:
+superseded_by: "[[ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono]]"
 constitution: ["§I.2 ningún secreto commiteado"]
 cost_impact: "$0 (SSM Standard, TTL de DynamoDB, 1 Lambda diario)"
 personal_data: true
@@ -126,3 +126,5 @@ datos, secretos, Discord y Ley 25.326) y §10.3 (borrado a los 60 días);
 rama `feature/carrito-orden-compra`.
 
 ## Notas posteriores
+
+- 2026-10-05 — Reemplazado por [ADR-0020](./ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md): el MVP pide solo nombre y apellido más teléfono y retira el borrado automático a 60 días de Discord y Gmail. Se mantienen el procesamiento en memoria, el registro seudonimizado de 90 días y el canal privado.

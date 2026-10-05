@@ -123,7 +123,7 @@ repositories:
     deploy: terraform (manual)
     domains: [ordenes]
     providers: [aws, discord]
-    foundational_decisions: [ADR-0005, ADR-0006, ADR-0011, ADR-0016, ADR-0017]
+    foundational_decisions: [ADR-0005, ADR-0006, ADR-0011, ADR-0016, ADR-0020]
 
 contracts:
   products-json:

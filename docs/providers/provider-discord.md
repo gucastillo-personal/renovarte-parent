@@ -18,9 +18,10 @@ Webhooks a dos canales distintos, cada uno con su propio webhook:
 
 ## Riesgos y límites
 
-- **Datos personales (Ley 25.326)**: el canal de órdenes guarda nombre,
-  contacto y dirección del visitante. Solo lo ven los propietarios, los
-  mensajes se borran a los 60 días y se recomienda 2FA en esas cuentas.
+- **Datos personales (Ley 25.326)**: el canal de órdenes guarda nombre y
+  teléfono del visitante. Solo lo ven los propietarios, los mensajes no se
+  borran automáticamente en el MVP (ADR-0020) y se recomienda 2FA en esas
+  cuentas.
 - Las URLs de los webhooks son **secretos**: nunca van en el navegador ni
   en el repo.
 - Discord aplica rate limits a los webhooks. En el volumen actual no es un
