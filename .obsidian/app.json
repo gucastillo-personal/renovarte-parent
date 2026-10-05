@@ -1,0 +1,20 @@
+{
+  "useMarkdownLinks": true,
+  "newLinkFormat": "relative",
+  "alwaysUpdateLinks": true,
+  "showUnsupportedFiles": false,
+  "userIgnoreFilters": [
+    "renovarte-catalogo/node_modules/",
+    "renovarte-catalogo/public/data/",
+    "renovarte-pipeline/data/",
+    "renovarte-pipeline/public/data/",
+    "renovarte-events/consumer/node_modules/",
+    "renovarte-events/infra/build/",
+    "renovarte-chat-gateway/node_modules/",
+    "renovarte-chat-gateway/dist/",
+    "renovarte-chat-gateway/terraform/build/",
+    "renovarte-colibri-rag/node_modules/",
+    "renovarte-colibri-rag/dist/",
+    "renovarte-colibri-rag/data/"
+  ]
+}

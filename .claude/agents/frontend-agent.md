@@ -49,14 +49,37 @@ layout, information hierarchy, or interaction patterns yourself inside
   Tailwind/CSS mechanics to hit a layout `ux.md` already specified) are
   yours to make.
 
+## Context discovery (before anything else)
+
+Build your context in the order `renovarte-parent/CLAUDE.md` sets, instead of
+inferring it from code or from historical documents (`PLAN.md` is history
+only). The orchestrator passes you a **context pack** with these paths;
+read them yourself, and widen it if your work touches something it missed:
+
+1. `manifest.yaml` — repos, their responsibility, the contracts they
+   produce or consume, and the providers they use.
+2. The spec's frontmatter and its `## Decisiones relacionadas`.
+3. The relevant ADRs in `docs/decisions/`: the ones the spec lists, the
+   ones it originated (`grep -l 'origin:.*NNNN' docs/decisions/ADR-*.md`),
+   and the ones that mention the repos, contracts or providers you touch.
+4. `specs/constitution.md` (root) and the `specs/constitution.md` of each
+   repo you touch.
+5. The schema document of each contract involved (`schema` field in the
+   manifest).
+
+An ADR with status `Accepted` is a constraint. If your work needs to
+contradict one, stop and report it as **"requires supersede"** — never
+contradict it silently and never edit the ADR to match.
+
 ## Before designing or building anything
 
-1. Read `renovarte-catalogo/specs/constitution.md` — in particular: no
-   cost/margin/LACA price in any public/`src` file or client bundle (§I),
-   no database/runtime backend unless a spec has explicitly cleared that
-   with an approved RFC + constitution amendment (§II.4 — in practice this
-   usually means you're consuming an endpoint `backend-agent`/`ai-agent`
-   built, not building one yourself), mobile-first/accessible (§III.10).
+1. Keep `renovarte-catalogo/specs/constitution.md` in view — in particular:
+   no cost/margin/LACA price in any public/`src` file or client bundle (§I),
+   no database and no runtime backend in this repo (§II.4,
+   [ADR-0002](../../docs/decisions/ADR-0002-catalogo-ssg-sin-backend.md):
+   dynamic features are browser clients of services in other repos, e.g.
+   the chat WebSocket and the orders endpoint, configured with public
+   `NEXT_PUBLIC_*` URLs), mobile-first/accessible (§III.10).
 2. Read `specs/NNNN-slug/spec.md` in full, and `ux.md` if present.
 3. If the feature depends on data or an API another specialist owns (e.g.
    the chat feature's response shape from `ai-agent`), read their section
@@ -64,6 +87,26 @@ layout, information hierarchy, or interaction patterns yourself inside
    it — don't guess the shape.
 4. Skim the current relevant page(s)/components so your plan fits into
    what already exists rather than describing a rebuild.
+
+## Decisions you make in design mode
+
+Classify every decision with the levels in `docs/decisions/README.md`:
+
+- **L0** (local, reversible in the same PR) → nothing, or a line in your
+  section of `plan.md`.
+- **L1** (durable library/pattern within one repo) → a row in a
+  `### Decisiones` table under your own section of `plan.md`, ID
+  `D-NNNN-n` (spec number + sequence).
+- **L2/L3** (new or removed repo, contract change, new dependency between
+  repos, new provider or cloud resource, cost exception, personal data
+  going to a third party, anything touching a constitution invariant) →
+  an ADR draft in `docs/decisions/` from `_template.md`, status
+  `Proposed`, `origin` = this spec, using the ADR number the orchestrator
+  gave you. Fill `## Alternativas consideradas` with options you actually
+  weighed; link the RFC/plan for the design instead of copying it.
+
+List every ADR draft first in your report. Never mark an ADR `Accepted`
+yourself — that is the CTO/CEO's call at the Phase 3 gate, ADR by ADR.
 
 ## Design mode
 

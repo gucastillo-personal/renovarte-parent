@@ -1,3 +1,17 @@
+---
+id: "0001"
+title: POC event-driven — notificación de cambios de precio por Discord
+type: spec
+status: done
+created: 2026-09-16
+closed: 2026-09-16
+repos: ["[[repo-renovarte-events]]", "[[repo-renovarte-pipeline]]"]
+domains: ["[[domain-notificaciones]]", "[[domain-precios]]"]
+contracts: ["[[contract-price-change-event]]"]
+providers: ["[[provider-aws]]", "[[provider-discord]]", "[[provider-github]]"]
+decisions: ["[[ADR-0001-superproyecto-submodulos]]", "[[ADR-0003-ingesta-en-pipeline]]", "[[ADR-0009-handoff-pipeline-catalogo-por-pr]]"]
+---
+
 # Plan — POC event-driven: notificación de cambios de precio
 
 **Estado:** ✅ completo — flujo end-to-end verificado en producción (CI real).
@@ -59,9 +73,9 @@ apply` requiere aprobación humana explícita en el momento (ver `CLAUDE.md`).
 - [x] Instalar Terraform CLI (aprobación dada) — `brew tap hashicorp/tap && brew install hashicorp/tap/terraform` (1.16.2; el formula `terraform` se sacó de homebrew-core por la licencia de HashiCorp).
 - [x] `terraform fmt` / `terraform init -backend=false` / `terraform validate` — todo en verde.
 - [x] `terraform apply` (aprobación dada) — **9 recursos creados en AWS** (SNS topic, 2 SQS, IAM role, Lambda, event source mapping). Outputs:
-  - `sns_topic_arn` = `arn:aws:sns:us-east-1:839670623501:renovarte-events-price-changes`
-  - `sqs_queue_url` = `https://sqs.us-east-1.amazonaws.com/839670623501/renovarte-events-price-changes`
-  - `sqs_dlq_url` = `https://sqs.us-east-1.amazonaws.com/839670623501/renovarte-events-price-changes-dlq`
+  - `sns_topic_arn` = `arn:aws:sns:us-east-1:<ACCOUNT_ID>:renovarte-events-price-changes`
+  - `sqs_queue_url` = `https://sqs.us-east-1.amazonaws.com/<ACCOUNT_ID>/renovarte-events-price-changes`
+  - `sqs_dlq_url` = `https://sqs.us-east-1.amazonaws.com/<ACCOUNT_ID>/renovarte-events-price-changes-dlq`
   - `lambda_function_name` = `renovarte-events-consumer`
 - [x] ~~Crear IAM user del producer + access key~~ — reemplazado por **OIDC**: AWS recomendó no usar access keys de larga duración. Se agregó `infra/oidc.tf` (proveedor OIDC de GitHub + rol `renovarte-events-github-actions-producer`, scoped a `sns:Publish` sobre el topic, asumible solo desde `repo:gucastillo-personal/renovarte-pipeline:*`). Aplicado sin errores.
 
@@ -130,7 +144,7 @@ cd renovarte-events/producer
 AWS_PROFILE=renovarte-events AWS_REGION=us-east-1 \
   uv run renovarte-events-producer publish \
     --input ../fixtures/example-price-changes.json \
-    --topic-arn arn:aws:sns:us-east-1:839670623501:renovarte-events-price-changes
+    --topic-arn arn:aws:sns:us-east-1:<ACCOUNT_ID>:renovarte-events-price-changes
 ```
 Y en CI: `gh workflow run publish.yml --repo gucastillo-personal/renovarte-pipeline --ref <rama>`.
 
@@ -140,3 +154,14 @@ Y en CI: `gh workflow run publish.yml --repo gucastillo-personal/renovarte-pipel
 - Revisar y mergear el PR #6 de `renovarte-catalogo` (el cambio de precio real que destapó esta verificación).
 - Opcional: probar el camino de la DLQ (Fase 6, ítem opcional).
 - Opcional: destruir la infra (`terraform destroy`, con aprobación) si en algún momento se quiere desarmar el POC.
+
+## Decisiones relacionadas
+
+ADRs previos que este POC reutiliza o que lo condicionan:
+
+- [ADR-0001](../../docs/decisions/ADR-0001-superproyecto-submodulos.md): `renovarte-events` es un submódulo nuevo con su propio `CLAUDE.md`.
+- [ADR-0003](../../docs/decisions/ADR-0003-ingesta-en-pipeline.md): el pipeline calcula el diff de precios, pero no se le suma AWS.
+- [ADR-0009](../../docs/decisions/ADR-0009-handoff-pipeline-catalogo-por-pr.md): el evento sale como pasos best-effort de `publish.yml`.
+
+Los ADRs que nacieron en este POC (0010 y 0011) lo nombran en su
+`origin`: `grep -l 'origin:.*0001-poc' docs/decisions/ADR-*.md`.

@@ -1,14 +1,17 @@
 # Arquitectura general — RenovArte
 
 Vista de conjunto de `renovarte-parent` y sus submódulos: qué repo hace qué,
-cómo se comunican entre sí, y cómo se construye cada feature nueva. Para el
+cómo se comunican entre sí, y cómo se construye cada feature nueva. La lista
+de repos, su stack, los contratos entre ellos y los proveedores externos
+tienen su fuente de verdad en [`../manifest.yaml`](../manifest.yaml) — este
+documento explica **cómo funciona**, no los repite. Para el
 detalle línea a línea de un flujo puntual, ver los documentos dedicados:
 [`flujo-event-driven-precios.md`](./flujo-event-driven-precios.md) (evento
 de cambio de precio → Discord) y [`flujo-precio-pdf.md`](./flujo-precio-pdf.md)
 (resolución de precio desde el PDF de LACA). Invariantes no negociables en
 [`../specs/constitution.md`](../specs/constitution.md).
 
-## Arquitectura general — 5 repos, una responsabilidad cada uno
+## Arquitectura general — un repo, una responsabilidad
 
 ```mermaid
 flowchart TB
@@ -19,27 +22,36 @@ flowchart TB
     CATALOGO["🖥️ renovarte-catalogo<br/>Next.js SSG — SOLO presentación<br/>$0 infra, sin backend, sin DB"]
     PIPELINE["🛠️ renovarte-pipeline<br/>Python — SOLO ingesta/transformación<br/>(Serlaca API, CSV, PDF LACA)"]
     EVENTS["📡 renovarte-events<br/>SOLO notificación de eventos<br/>(producer + infra AWS)"]
-    GATEWAY["🔌 renovarte-chat-gateway<br/>(planeado) SOLO transporte WebSocket<br/>del chat Colibrí"]
-    RAG["🧠 renovarte-colibri-rag<br/>(en implementación) SOLO LLM/RAG<br/>del chat Colibrí"]
+    GATEWAY["🔌 renovarte-chat-gateway<br/>SOLO transporte WebSocket<br/>del chat Colibrí"]
+    RAG["🧠 renovarte-colibri-rag<br/>SOLO LLM/RAG<br/>del chat Colibrí"]
+    ORDENES["🧾 renovarte-ordenes<br/>(planeado, spec 0017) SOLO órdenes<br/>de compra: validación + entrega"]
 
     PARENT -.-> CATALOGO
     PARENT -.-> PIPELINE
     PARENT -.-> EVENTS
     PARENT -.-> GATEWAY
     PARENT -.-> RAG
+    PARENT -.-> ORDENES
 
     PIPELINE -->|"products.json vía PR<br/>(handoff manual+revisado)"| CATALOGO
     PIPELINE -.->|"evento best-effort"| EVENTS
     CATALOGO -->|"embebe el widget de chat"| GATEWAY
     GATEWAY <-->|"invocación async<br/>+ postToConnection"| RAG
+    PIPELINE -.->|"products.json publicado<br/>(sync programado)"| RAG
+    CATALOGO -->|"orders-http<br/>(carrito → orden)"| ORDENES
+    PIPELINE -.->|"products.json publicado<br/>(fetch con caché)"| ORDENES
 ```
+
+Estado: todos en producción salvo `renovarte-ordenes`, diseñado y aprobado
+(spec 0017, Fase 3) pero todavía no creado. El estado vigente de cada repo
+está en `manifest.yaml` (`status`).
 
 Invariante que atraviesa todo (`specs/constitution.md` del root): **un repo,
 una responsabilidad**; **$0 infra por defecto** salvo excepción explícita y
 acotada (ej. el techo de USD 20/mes del chat, RNF-09); **ningún repo nuevo
-invalida una invariante ya cerrada de otro** — por eso el chat no vive
-dentro de `renovarte-catalogo` (que tiene cerrado "no runtime backend"),
-sino en 2 repos nuevos separados.
+invalida una invariante ya cerrada de otro** — por eso el chat y las
+órdenes no viven dentro de `renovarte-catalogo` (que tiene cerrado "no
+runtime backend"), sino en repos nuevos separados.
 
 ## Flujo 1 — catálogo de productos (pipeline → catalogo)
 
@@ -69,13 +81,13 @@ flowchart LR
 Detalle completo con niveles de componentes y secuencia real verificada en
 [`flujo-event-driven-precios.md`](./flujo-event-driven-precios.md).
 
-## Flujo 3 — chat Colibrí (spec 0016, en implementación)
+## Flujo 3 — chat Colibrí (spec 0016, en producción desde 2026-09-29)
 
 ```mermaid
 sequenceDiagram
     actor Visitante
     participant Widget as renovarte-catalogo<br/>(widget de chat)
-    participant GW as renovarte-chat-gateway<br/>(WebSocket, no existe aún)
+    participant GW as renovarte-chat-gateway<br/>(WebSocket)
     participant RAG as renovarte-colibri-rag<br/>(LLM/RAG)
     participant Claude as Claude Haiku 4.5
 
@@ -105,14 +117,53 @@ Puntos clave de este flujo (spec completa en
   `renovarte-colibri-rag` falla, es responsable de avisarle al cliente
   directamente (no puede propagar la excepción a quien lo invocó).
 
-## Flujo 4 — cómo se construye cada feature (gobierno del proyecto)
+## Flujo 4 — orden de compra (spec 0017, diseñado, no implementado)
+
+```mermaid
+sequenceDiagram
+    actor Visitante
+    participant Cart as renovarte-catalogo<br/>(carrito + formulario)
+    participant Ord as renovarte-ordenes<br/>(Lambda Function URL)
+    participant Cat as products.json publicado
+    participant SES as Amazon SES (mail)
+    participant DC as Discord (canal privado)
+
+    Visitante->>Cart: arma el carrito (catálogo o combo de Colibrí)
+    Cart->>Ord: GET /v1/estado
+    Ord-->>Cart: disponible + form_token (o tope_alcanzado)
+    Visitante->>Cart: completa contacto y confirma
+    Cart->>Ord: POST /v1/ordenes
+    Ord->>Ord: tamaño, Origin, flag de control, rate limit, esquema, token
+    Ord->>Cat: valida líneas contra el catálogo (caché)
+    Ord->>Ord: reserva idempotencia + número de orden (DynamoDB)
+    par entrega en paralelo
+        Ord->>SES: mail a la casilla de RenovArte
+    and
+        Ord->>DC: webhook al canal de órdenes
+    end
+    Ord-->>Cart: 201 aceptada si al menos un canal entregó
+    Cart->>Visitante: confirmación con número de orden
+```
+
+Puntos clave (spec y RFC en `specs/0017-carrito-orden-compra/`):
+
+- **Sin pagos ni envío en el sitio**: la orden se coordina después, por
+  fuera.
+- **Doble canal, "al menos uno"**: mail y Discord llevan el mismo número de
+  orden; la orden se acepta si cualquiera de los dos entregó.
+- **Validación contra el catálogo publicado**, nunca contra precios que
+  manda el cliente.
+- **Tope de USD 20/mes** (RNF-14) con el mismo patrón de ledger + kill-switch
+  que el chat.
+
+## Flujo 5 — cómo se construye cada feature (gobierno del proyecto)
 
 ```mermaid
 flowchart LR
     P1["Fase 1<br/>Product<br/>(product-agent)"] --> G1{"Aprobación<br/>humana"}
     G1 --> P2["Fase 2<br/>UX<br/>(ux-agent, si toca UI)"]
     P2 --> G2{"Aprobación<br/>humana"}
-    G2 --> P3["Fase 3<br/>Design<br/>(frontend/backend/ai-agent)"]
+    G2 --> P3["Fase 3<br/>Design<br/>(frontend/backend/ai/devops-agent)"]
     P3 --> G3{"Aprobación<br/>humana"}
     G3 --> P4["Fase 4<br/>Implementación<br/>(mismos specialists)"]
     P4 --> G4{"Aprobación<br/>humana"}

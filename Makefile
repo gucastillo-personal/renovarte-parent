@@ -1,4 +1,5 @@
-# renovarte-parent — atajos para levantar el stack local del chat "Colibrí"
+# renovarte-parent — `make docs-check` valida la base de conocimiento, y el
+# resto son atajos para levantar el stack local del chat "Colibrí"
 # (spec 0016) sin AWS: renovarte-catalogo (frontend) habla por WebSocket con
 # el harness de dev de renovarte-chat-gateway, que a su vez invoca el
 # conector real de renovarte-colibri-rag (Claude Haiku + Voyage AI reales,
@@ -15,11 +16,13 @@ CATALOGO_DIR     := renovarte-catalogo
 DEV_WS_PORT  ?= 8787
 DEV_RAG_PORT ?= 8788
 
-.PHONY: help dev-colibri dev-rag dev-gateway dev-catalogo \
+.PHONY: help docs-check dev-colibri dev-rag dev-gateway dev-catalogo \
         _require-submodules _require-rag-env
 
 help:
 	@echo "renovarte-parent — targets disponibles:"
+	@echo ""
+	@echo "  make docs-check      valida la base de conocimiento (links, wikilinks, ADRs, specs, manifest)"
 	@echo ""
 	@echo "  make dev-colibri     levanta rag + gateway + catalogo juntos (Ctrl+C corta los 3)"
 	@echo "  make dev-rag         solo el conector RAG local (renovarte-colibri-rag)"
@@ -32,6 +35,10 @@ help:
 	@echo ""
 	@echo "  Puertos por defecto: gateway=$(DEV_WS_PORT) rag=$(DEV_RAG_PORT)"
 	@echo "  (override: make dev-colibri DEV_WS_PORT=... DEV_RAG_PORT=...)"
+
+# Solo lectura y sin dependencias: Ruby con su biblioteca estándar (YAML).
+docs-check:
+	@ruby scripts/docs-check.rb
 
 _require-submodules:
 	@for d in $(COLIBRI_RAG_DIR) $(CHAT_GATEWAY_DIR) $(CATALOGO_DIR); do \

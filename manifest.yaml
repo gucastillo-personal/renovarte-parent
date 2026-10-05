@@ -1,0 +1,187 @@
+# manifest.yaml — composición del sistema RenovArte (fuente de verdad)
+#
+# Qué repos hay, qué hace cada uno, con qué stack, qué contratos producen o
+# consumen y qué proveedores externos usan. Lo leen humanos y agentes como
+# primer paso de descubrimiento de contexto (ver CLAUDE.md).
+#
+# Reglas:
+# - Solo hechos de composición. El "cómo funciona" vive en docs/architecture/
+#   y el "por qué" en docs/decisions/ (ADRs) — acá solo se los referencia.
+# - Toda dependencia entre repos es un contrato: se declara una sola vez en
+#   `contracts` (productor → consumidores), nunca como `depends_on` por repo.
+#   "¿De qué depende X?" = qué contratos consume X.
+# - El schema de cada contrato vive en un único documento (`schema`); este
+#   archivo no lo copia.
+# - Se actualiza en la Fase 6 de /feature (cierre de conocimiento) cuando una
+#   feature agrega un repo, un contrato o un proveedor, o cambia un status.
+
+version: 1
+
+system:
+  name: RenovArte
+  constitution: specs/constitution.md
+  architecture: docs/arquitectura-general.md
+  decisions: docs/decisions/README.md
+  specs: specs/README.md
+
+repositories:
+  renovarte-catalogo:
+    path: renovarte-catalogo
+    status: production            # planned | in-development | production | retired
+    type: web-frontend
+    responsibility: >-
+      Muestra el catálogo, el carrito y el widget de chat. Solo presentación
+      (SSG), sin backend ni base de datos propios.
+    stack: [typescript, nextjs-ssg, pnpm, vitest, playwright]
+    gate: pnpm gate
+    deploy: vercel (manual, CTO/CEO)
+    domains: [catalogo, colibri, ordenes]
+    providers: [vercel]
+    docs:
+      constitution: specs/constitution.md
+      prd: docs/PRD/PRD-catalogo-renovarte.md
+      rfc: docs/rfc/0001-arquitectura-catalogo.md
+      specs: specs/
+    foundational_decisions: [ADR-0002]
+
+  renovarte-pipeline:
+    path: renovarte-pipeline
+    status: production
+    type: data-pipeline
+    responsibility: >-
+      Ingesta (API Serlaca, CSV, PDF LACA) y pricing → products.json. Único
+      repo que ve costo y margen.
+    stack: [python, uv, pydantic, pdfplumber, pytest, ruff, mypy]
+    gate: make check
+    deploy: github-actions (publish → PR a renovarte-catalogo)
+    domains: [precios, catalogo]
+    providers: [serlaca-laca, github]
+    docs:
+      constitution: specs/constitution.md
+      prd: docs/PRD/PRD-pipeline-renovarte.md
+      rfc: docs/rfc/0001-arquitectura-pipeline.md
+      specs: specs/
+    foundational_decisions: [ADR-0003]
+
+  renovarte-events:
+    path: renovarte-events
+    status: production
+    type: event-service
+    responsibility: >-
+      Notifica eventos del sistema (hoy: cambio de precio) a Discord.
+    stack: [python (producer), node (consumer), terraform]
+    gate: node --test (consumer)
+    deploy: terraform (manual)
+    domains: [notificaciones]
+    providers: [aws, discord]
+    docs:
+      runbook: docs/runbook.md
+    foundational_decisions: [ADR-0010, ADR-0011]
+
+  renovarte-chat-gateway:
+    path: renovarte-chat-gateway
+    status: production
+    type: realtime-gateway
+    responsibility: >-
+      Transporte WebSocket del chat Colibrí: ciclo de vida de la conexión,
+      envelope de mensajes y corte de gasto.
+    stack: [typescript, node, pnpm, vitest, terraform]
+    gate: pnpm gate
+    deploy: terraform (manual)
+    domains: [colibri]
+    providers: [aws]
+    docs:
+      runbook: docs/runbook.md
+    foundational_decisions: [ADR-0004, ADR-0005, ADR-0011, ADR-0012]
+
+  renovarte-colibri-rag:
+    path: renovarte-colibri-rag
+    status: production
+    type: ai-service
+    responsibility: >-
+      Conector LLM/RAG de Colibrí: clasifica el turno, recupera productos del
+      catálogo, arma combos en código y aplica guardrails.
+    stack: [typescript, node, pnpm, vitest, terraform]
+    gate: pnpm gate
+    deploy: terraform (manual)
+    domains: [colibri]
+    providers: [aws, anthropic, voyage-ai, github]
+    docs:
+      architecture: docs/ARQUITECTURA.md
+    foundational_decisions: [ADR-0004, ADR-0005, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0015]
+
+  renovarte-ordenes:
+    path: renovarte-ordenes       # todavía no es submódulo (spec 0017, Fase 4)
+    status: planned
+    type: api-service
+    responsibility: >-
+      Crea y valida órdenes de compra, anti-abuso, y las entrega por mail y
+      por un canal privado de Discord.
+    stack: [typescript, node, pnpm, vitest, terraform]
+    gate: pnpm gate
+    deploy: terraform (manual)
+    domains: [ordenes]
+    providers: [aws, discord]
+    foundational_decisions: [ADR-0005, ADR-0006, ADR-0011, ADR-0016, ADR-0017]
+
+contracts:
+  products-json:
+    kind: file/json
+    producer: renovarte-pipeline
+    consumers:
+      renovarte-catalogo: PR automático (pipeline publish)
+      renovarte-colibri-rag: sync programado (GitHub Action)
+      renovarte-ordenes: fetch en runtime con caché (planned)
+    schema: renovarte-pipeline/docs/rfc/0001-arquitectura-pipeline.md#2.4
+
+  chat-envelope:
+    kind: websocket/json
+    producer: renovarte-chat-gateway
+    consumers:
+      renovarte-catalogo: widget de chat
+      renovarte-colibri-rag: postToConnection directo al cliente
+    schema: specs/0016-chat-recomendador-cremas/rfc-transporte-websocket.md#3
+
+  connector-invocation:
+    kind: lambda-async
+    producer: renovarte-chat-gateway
+    consumers:
+      renovarte-colibri-rag: InvocationType Event (ConnectorInvocationPayload)
+    schema: specs/0016-chat-recomendador-cremas/rfc-transporte-websocket.md#4
+
+  orders-http:
+    kind: http/json
+    producer: renovarte-ordenes
+    consumers:
+      renovarte-catalogo: carrito y formulario de orden
+    schema: specs/0017-carrito-orden-compra/rfc-servicio-ordenes.md#3
+
+  price-change-event:
+    kind: sns/json
+    producer: renovarte-pipeline
+    consumers:
+      renovarte-events: consumer Lambda (SQS)
+    schema: renovarte-events/docs/evento-price-changes.md
+
+providers:
+  aws:
+    services: [lambda, api-gateway-websocket, dynamodb, sns, sqs, ses, budgets]
+    cost: free tier; excepción acotada en ADR-0005
+  anthropic:
+    services: [claude-haiku-4-5]
+    cost: dentro del tope de USD 20/mes (ADR-0005)
+  voyage-ai:
+    services: [embeddings]
+    cost: free tier
+  vercel:
+    services: [hosting]
+    cost: free
+  discord:
+    services: [webhooks]
+    cost: free
+  github:
+    services: [repos, actions]
+    cost: free
+  serlaca-laca:
+    services: [api de productos, pdf de precios]
+    cost: n/a (proveedor comercial de los productos)
