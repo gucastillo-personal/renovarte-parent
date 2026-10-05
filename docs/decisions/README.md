@@ -23,7 +23,7 @@ hicieron esto?" y el nivel es L1 o más, va ADR.
 
 ## Checklist de detección
 
-Se responde en la Fase 1 de `/feature` (decisiones candidatas) y en la
+Se responde en la Fase 1 de `/agentic-sdd:feature` (decisiones candidatas) y en la
 Fase 3 (definitivas):
 
 1. ¿La feature requiere una decisión arquitectónica?
@@ -92,9 +92,10 @@ agente se detiene y lo reporta — igual que un conflicto con
 | [ADR-0016](./ADR-0016-ordenes-doble-canal.md) | Órdenes por doble canal mail + Discord, aceptadas con ≥1, idempotencia por canal | L3 | Accepted | spec 0017 (retroactivo) |
 | [ADR-0017](./ADR-0017-datos-personales-ordenes.md) | Datos personales de órdenes: en memoria, registro seudonimizado 90 días, borrado a 60 | L3 | Accepted | spec 0017 (retroactivo) |
 | [ADR-0018](./ADR-0018-products-json-fuente-unica-consumidores.md) | `products.json` publicado como fuente única de todos los consumidores | L2 | Accepted | spec 0016, 0017 (retroactivo) |
+| [ADR-0019](./ADR-0019-secretos-en-ssm.md) | Secretos de runtime en SSM SecureString con `value_wo`, no en `.tfvars` | L3 | Accepted | migración a agentic-sdd |
 
 ### Backfill
 
 Completo: todas las decisiones ya tomadas antes de esta base de
 conocimiento tienen ADR (ADR-0001 a ADR-0018, todos `retroactive: true`).
-Las decisiones nuevas se registran en la Fase 3 de `/feature`.
+Las decisiones nuevas se registran en la Fase 3 de `/agentic-sdd:feature`.

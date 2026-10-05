@@ -69,5 +69,5 @@ specs, las relaciones de supersede, el índice de ADRs, que cada entrada de
 `manifest.yaml` tenga su nota (y que no haya notas huérfanas), y que no se
 publiquen IDs de cuenta AWS ni URLs de webhooks. Falla con errores; avisa
 (sin fallar) cuando algo vive en una spec sin mergear o en un submódulo sin
-inicializar. Se corre en la Fase 6 de `/feature`. Código:
+inicializar. Se corre en la Fase 6 de `/agentic-sdd:feature`. Código:
 [`scripts/docs-check.rb`](../scripts/docs-check.rb).

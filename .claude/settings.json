@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "gucastillo-tools": {
+      "source": {
+        "source": "github",
+        "repo": "gucastillo-personal/agentic-sdd"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "agentic-sdd@gucastillo-tools": true
+  }
+}
