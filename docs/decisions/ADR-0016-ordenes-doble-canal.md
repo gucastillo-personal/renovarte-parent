@@ -119,3 +119,5 @@ semántica de `aceptada`, algoritmo y alertas), §10.1 (SES) y §10.2
 `feature/carrito-orden-compra`.
 
 ## Notas posteriores
+
+- 2026-10-05 — La consecuencia "los mensajes de Discord se borran a los 60 días" quedó superada por [ADR-0020](./ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md): el MVP no borra automáticamente. La decisión de este ADR (doble canal) no cambia.

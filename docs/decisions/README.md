@@ -90,9 +90,10 @@ agente se detiene y lo reporta — igual que un conflicto con
 | [ADR-0014](./ADR-0014-embeddings-voyage-ai.md) | Embeddings con Voyage AI, calculados en el sync | L3 | Accepted | spec 0016 (retroactivo) |
 | [ADR-0015](./ADR-0015-combos-calculados-en-codigo.md) | Combos y aritmética de presupuesto en código, nunca por el LLM | L2 | Accepted | spec 0016 (retroactivo) |
 | [ADR-0016](./ADR-0016-ordenes-doble-canal.md) | Órdenes por doble canal mail + Discord, aceptadas con ≥1, idempotencia por canal | L3 | Accepted | spec 0017 (retroactivo) |
-| [ADR-0017](./ADR-0017-datos-personales-ordenes.md) | Datos personales de órdenes: en memoria, registro seudonimizado 90 días, borrado a 60 | L3 | Accepted | spec 0017 (retroactivo) |
+| [ADR-0017](./ADR-0017-datos-personales-ordenes.md) | Datos personales de órdenes: en memoria, registro seudonimizado 90 días, borrado a 60 | L3 | Superseded por ADR-0020 | spec 0017 (retroactivo) |
 | [ADR-0018](./ADR-0018-products-json-fuente-unica-consumidores.md) | `products.json` publicado como fuente única de todos los consumidores | L2 | Accepted | spec 0016, 0017 (retroactivo) |
 | [ADR-0019](./ADR-0019-secretos-en-ssm.md) | Secretos de runtime en SSM SecureString con `value_wo`, no en `.tfvars` | L3 | Accepted | migración a agentic-sdd |
+| [ADR-0020](./ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md) | Datos personales de órdenes (MVP): nombre y apellido más teléfono, sin borrado automático | L3 | Accepted | spec 0017 |
 
 ### Backfill
 
