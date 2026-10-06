@@ -9,6 +9,17 @@
 > `ux.md` y del contrato de `## Backend`). Toda divergencia entre
 > secciones se documenta y se resuelve antes de implementar.
 
+## Enmienda 2026-10-05b — se agrega nombre y apellido
+
+> **Rige sobre la enmienda de abajo, en lo que la contradiga** ([ADR-0020](../../docs/decisions/ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md); `spec.md`,
+> precisión 2026-10-05b; RFC revisión 4). El formulario pide **dos campos**:
+> "Nombre y apellido" (un solo campo) y teléfono. Por lo tanto, en la
+> enmienda 2026-10-05 de abajo: el punto 1 pasa a `contacto = { nombre,
+> telefono }`; en el punto 3, `sessionStorage` guarda nombre y teléfono; y
+> en el punto 4, `OrderForm` tiene dos campos. Todo lo demás de esa enmienda
+> (lo retirado y lo que se mantiene) sigue vigente. Cada sección de
+> especialista documenta el detalle.
+
 ## Enmienda 2026-10-05 — recorte de datos personales del MVP
 
 > **Rige sobre el resto de este plan.** La CEO de RenovArte pidió que el
@@ -71,11 +82,43 @@ mergear la spec aprobada y arrancar la implementación más adelante.
 
 ## Backend
 
-**Autor:** `backend-agent`. **Revisión 2 (2026-09-30).** **Repo:**
+**Autor:** `backend-agent`. **Revisión 2 (2026-09-30), ajustada por las
+enmiendas 2026-10-05 y 2026-10-05b (RFC revisión 4).** **Repo:**
 `renovarte-ordenes`, **público** (decisión del CTO/CEO; no existe todavía,
 se crea en Fase 4 con aprobación humana). **Diseño completo y
 justificación:** [`rfc-servicio-ordenes.md`](./rfc-servicio-ordenes.md)
-(revisión 2).
+(revisión 4).
+
+> **Revisión 4 (2026-10-05b, ADR-0020) — nombre y apellido + teléfono.**
+> Rige sobre lo que diga el resto de esta sección sobre "solo teléfono" o
+> sobre el contacto. Cambios, todos en el RFC (§3.2, §3.2.1, §5.4.1, §7,
+> §9.1, §10.2):
+>
+> 1. **Contrato:** `contacto = { nombre, telefono }`; `CampoOrden` suma
+>    `"contacto.nombre"`. Cambio de contrato respecto de la revisión 3
+>    (sin código previo: B3 no existe).
+> 2. **Validación del nombre**, idéntica a `ux.md`: tras recortar, 2 a 80
+>    caracteres (puntos de código) y al menos una letra `\p{L}`, sin exigir
+>    más de una palabra. Se normaliza (NFC, recorte, colapso de espacios
+>    internos) y se rechazan CR/LF, `Cc`, U+2028/9, bidi y sustitutos
+>    sueltos. Códigos: vacío → `requerido`; `> 80` → `largo`; `< 2`, sin
+>    letra o con caracteres rechazados → `formato`.
+> 3. **Escape por destino:** el nombre nunca va en un header del mail ni en
+>    `username` de Discord; HTML escapado; texto plano literal; en Discord,
+>    dentro del bloque de código con `` ` `` → `ˋ`. No hay exportación CSV
+>    (si se agrega: neutralizar `= + - @`).
+> 4. **Mail y Discord** llevan el nombre en el cuerpo (y en el adjunto
+>    `.txt`), después de una **línea de relleno fija** (decisión del owner:
+>    mantiene el nombre fuera de la vista previa de Gmail) y del número y
+>    la fecha. **El asunto y la primera línea
+>    de Discord no cambian y no tienen datos personales.**
+> 5. **`payload_hmac` incluye nombre y teléfono**, con clave derivada por
+>    `idempotency_key` (RFC §5.4.1): un reintento con otro nombre u otro
+>    teléfono bajo la misma key es `invalida`, y la huella no permite
+>    reconstruir el dato ni relacionar órdenes entre sí.
+> 6. **Sin cambios** de infraestructura, env vars, IAM ni alarmas; sin
+>    cambios en la allowlist de logs (el nombre queda **fuera**, como el
+>    teléfono).
 
 **Constitución:** sin conflictos. `renovarte-catalogo` sigue estático
 (AC-14). El runtime vive en el repo nuevo, igual que en la 0016: se agrega
@@ -139,9 +182,11 @@ suma costo. No hace falta enmendar §II.4.
 - **Anti-abuso:** `Origin`, `form_token` HMAC (3 s–2 h), honeypot,
   esquema estricto, rate limit por IP hasheada y **cupo global de
   órdenes** (una vez por key; cubre los dos canales) (RFC §6).
-- **Datos personales:** no se persisten en AWS. Dos copias completas
-  fuera de AWS: el mail (política de la casilla) y el mensaje de Discord
-  (borrado automático a los 60–61 días). Logs con allowlist; nunca la
+- **Datos personales** (ADR-0020, supersede al 0017): nombre y apellido y
+  teléfono; no se persisten en AWS. Dos copias completas fuera de AWS: el
+  mail (política de la casilla) y el mensaje de Discord (**sin borrado
+  automático**, retirado el 2026-10-05). `IDEM#` solo guarda la huella.
+  Logs con allowlist; nunca la
   URL del webhook ni el body de respuesta de Discord (RFC §7).
 - **Tope de USD 20/mes:** ledger al 90 %, reserved concurrency, alarma de
   flood y Budget al 100 % → `budget-guard` → concurrency 0. Reset el día
@@ -213,7 +258,13 @@ Lo que el cliente tiene que cumplir (sin cambios salvo los límites):
 7. `rechazada_por_catalogo` → aplicar `precio_vigente`/`no_disponible`,
    mostrar el total y exigir un nuevo envío con key nueva.
 8. Límites que valida también el servidor: cantidad 1..20, **1..100
-   líneas**, reglas de contacto de `ux.md`. Además, el servidor rechaza
+   líneas**, reglas de contacto de `ux.md` (nombre: 2..80 tras recortar y
+   al menos una letra; teléfono: 8..15 dígitos). El servidor es **igual o
+   más permisivo** que el cliente (cuenta puntos de código, no unidades
+   UTF-16), así que lo que el cliente acepta, el servidor lo acepta. Los
+   errores llegan como `contacto.nombre` / `contacto.telefono` con
+   `requerido`, `formato` o `largo` (el nombre usa el mismo copy para
+   `formato` y `largo`). Además, el servidor rechaza
    en los campos de texto los caracteres de control y de control
    bidireccional (U+202A–U+202E, U+2066–U+2069). No afecta a ningún
    usuario real; si el cliente quiere, puede filtrarlos al validar.
@@ -286,11 +337,12 @@ deploy de código por OIDC con `workflow_dispatch`.
 | `src/handlers/http.ts` | Entry point de la Function URL: routing por `rawPath` de `GET /v1/estado` y `POST /v1/ordenes`, orden de operaciones (RFC §6.5); sin headers CORS |
 | `src/handlers/budget-guard.ts` | SNS (Budget o alarma de flood) → `CONTROL` + concurrency 0; modo `reset` con `Put`/`Delete` según la configuración |
 | `src/handlers/discord-retention.ts` | Job diario: recorre `BORRAR#` desde el cursor, borra por webhook y registra el resultado (RFC §10.3) |
-| `src/lib/validate-order.ts` | Pura: esquema estricto, contacto, honeypot, límites (1..100 líneas), caracteres de control y bidi |
+| `src/lib/validate-order.ts` | Pura: esquema estricto, contacto (nombre §3.2.1 con NFC/recorte/colapso, teléfono), honeypot, límites (1..100 líneas), caracteres de control y bidi |
 | `src/lib/catalog.ts` | Fetch + caché + ETag + guard `isProduct` + allowlist de campos |
 | `src/lib/price-check.ts` | Pura: líneas vs. catálogo → ok / `rechazada_por_catalogo` |
 | `src/lib/form-token.ts` | Pura: emitir/verificar HMAC, ventana de 3 s–2 h, fuera de ventana → `token_vencido` |
 | `src/lib/order-model.ts` | Pura: builder de `OrdenParaEntrega` por allowlist (el modelo único que usan los dos canales) |
+| `src/lib/payload-hmac.ts` | Pura: clave derivada por `idempotency_key` + serialización canónica (incluye nombre normalizado y teléfono) → `payload_hmac` (RFC §5.4.1) |
 | `src/lib/idempotency.ts` | Reserva `IDEM#` con estado por canal, claim condicional de canales `fallido`, persistencia por canal, agregado |
 | `src/lib/delivery.ts` | Orquesta la entrega en paralelo, aplica la tabla de §5.3, programa el borrado y emite `canal_fallido` |
 | `src/lib/order-number.ts` | `RA-ddddd` + reserva `NUM#` con reintentos |
@@ -324,17 +376,17 @@ epoch-segundos):**
 
 | AC | Verificación (vitest, sin AWS ni Discord reales salvo donde se indica) |
 |---|---|
-| AC-9 (server-side) | `validate-order.test.ts`: tabla de casos por campo (vacíos, largo, formato, ninguno de los dos medios, trim, CR/LF, control, bidi); cada error mapea a `campo`/`codigo` |
-| AC-10 / AC-13 | `http.test.ts`: el `numero_orden` de la respuesta es igual al del asunto y cuerpo que recibe el mailer fake. `render.test.ts`: fecha y hora, contacto, una fila por línea y total = Σ. **Exactamente un mail:** reintento con la misma key → mismo número, mailer llamado 1 vez. **Real:** smoke en SES sandbox (B19) |
+| AC-9 (server-side) | `validate-order.test.ts`: tabla de casos por campo. **Nombre:** vacío y solo espacios → `requerido`; 1 carácter → `formato`; 2 caracteres válidos ("Li") → ok; exactamente 80 → ok; 81 → `largo`; 80 con espacios alrededor → ok (se mide tras recortar); solo dígitos o símbolos → `formato`; una sola palabra ("Madonna") → ok; "O'Brien", "María-José", "Ñandú", "李雷", "Åsa" → ok; NFC vs. NFD del mismo nombre → mismo resultado normalizado; espacios internos múltiples → colapsados; CR/LF, tabulador, `Cc`, U+2028/9, bidi y sustituto suelto → `formato`; no string → `formato`; clave `contacto.nombre` ausente → `requerido`. Paridad con el cliente: una tabla compartida de casos `ux.md` (mismos vectores que `OrderForm`) da el mismo veredicto. **Teléfono:** vacío, 7 y 16 dígitos, letras, separadores válidos. Cada error mapea a `campo`/`codigo`; claves `email`/`direccion`/`localidad` → `no_permitido` |
+| AC-10 / AC-13 | `http.test.ts`: el `numero_orden` de la respuesta es igual al del asunto y cuerpo que recibe el mailer fake. `render.test.ts`: fecha y hora, **nombre y teléfono en el cuerpo** (texto y HTML), una fila por línea y total = Σ; **el asunto no contiene el nombre ni el teléfono**; **el cuerpo (texto y HTML) empieza con la constante `LINEA_RELLENO` exacta, idéntica en dos órdenes distintas, y sus primeros 153 caracteres no contienen nombre, teléfono ni número de orden**; el adjunto de Discord = `text/plain` del mail; el nombre nunca aparece en `Subject`/`From`/`To`/`ReplyTo`; un nombre `<script>`, `"><img>` o `&amp;` sale escapado en el HTML y literal en el texto. **Exactamente un mail:** reintento con la misma key → mismo número, mailer llamado 1 vez. **Real:** smoke en SES sandbox (B19) |
 | AC-11 | `ses-sender.test.ts`: `ToAddresses` siempre `[ORDER_RECIPIENT]`, sin `Cc`/`Bcc`; el email del visitante nunca en `Destination` |
 | AC-15 | `price-check.test.ts` + `http.test.ts`: 409 con `precio_vigente`/`no_disponible` y `total_vigente`, **sin llamar a ningún canal**; `total_visto` inconsistente → 422; refetch forzado; sin catálogo → `catalogo_no_disponible` |
 | AC-16 | `check:leak` en CI sobre los renders de ejemplo de mail **y Discord**; `order-model.test.ts` con una clave de costo inyectada en el catálogo → no aparece en ninguna salida |
 | AC-17 | `http.test.ts`: bodies con `to`/`cc`/`bcc`/`reply_to`/`webhook`/`canal`/`thread_id` → 422, **ningún canal llamado**; asserción sobre `Destination` y sobre la URL que usa el cliente Discord (siempre la de SSM). `webhook.test.ts`: URL de SSM con otro host → `fallido`/`config`, sin request. Infra: IAM + sandbox (I16) |
-| AC-18 / AC-27 | `log.test.ts` (allowlist); `http.test.ts` captura todos los logs y todas las escrituras DynamoDB de una orden aceptada y verifica que no contienen nombre, email, teléfono, dirección, localidad, IP en claro, URL del webhook ni el body de respuesta de Discord; `IDEM#` con `expira_en` = +90 días en epoch-segundos |
+| AC-18 / AC-27 | `log.test.ts` (allowlist; el nombre y el teléfono se descartan); `http.test.ts` usa un **nombre y un teléfono canario únicos**, captura todos los logs (también los de una orden `invalida`, `rechazada_por_catalogo` y con canal fallido) y todas las escrituras DynamoDB de una orden aceptada y verifica que no contienen el canario (ni su NFC/NFD, ni un fragmento), ni IP en claro, URL del webhook ni el body de respuesta de Discord; `IDEM#` con `expira_en` = +90 días en epoch-segundos. `payload-hmac.test.ts`: cambia el nombre o el teléfono → otra huella; mismo payload con otra key → otra huella; el nombre no aparece en el valor guardado; reintento con otro nombre y la misma key → `invalida` sin envíos |
 | AC-19 | `http.test.ts`: `Origin` ajeno → 403; token ausente, < 3 s, > 2 h o ajeno → 422 `token_vencido`; honeypot → 422 `errores: []`; 21.ª request/hora → 429; 4.ª aceptada/hora → 429; cupo global agotado → 503. En todos, **ningún canal llamado**. Reintentos de la misma key no consumen cupo |
 | AC-20 | `delivery.test.ts`: los dos canales `fallido` → 502 `envio_fallido` y el reintento reenvía los dos; los dos `incierto` → `estado_incierto` y el reintento no reenvía; **nunca un 201 sin `MessageId` ni `id` de Discord**. `ses-sender.test.ts`: cliente con `maxAttempts: 1`; 4xx → `fallido`, 5xx/timeout → `incierto` |
 | AC-22 | `ledger.test.ts`: 90 % → `CONTROL` apagado; `http.test.ts`: flag apagado → `tope_alcanzado` (o `mantenimiento` según motivo), **cero** escrituras y ningún canal llamado; `budget-guard.test.ts`: mensaje de Budget → `presupuesto` + concurrency 0; alarma `ALARM` → `flood` + concurrency 0; alarma `OK` → sin cambios; formato desconocido → apaga; `reset` con n → `Put(n)`, sin n → `Delete` |
-| AC-23 | `discord-render.test.ts`: primera línea con el mismo `numero_orden`, total y cantidad de productos; contacto completo; adjunto = `renderTextoPlano(orden)` = parte `text/plain` del mail (igualdad de strings); orden de 100 líneas → `content` ≤ 2.000 con "… y N productos más" y adjunto completo. `http.test.ts`: en una orden aceptada, el Discord fake recibe exactamente un mensaje con el mismo número que la respuesta y el mail. **Real:** smoke (B19) |
+| AC-23 | `discord-render.test.ts`: primera línea con el mismo `numero_orden`, total y cantidad de productos **y sin nombre ni teléfono**; bloque de contacto con nombre y teléfono; un nombre de 80 caracteres no rompe el presupuesto de 1.900; nombre con `` ` ``, `@everyone`, `[x](http://y)` o `**` queda neutralizado dentro del bloque; adjunto = `renderTextoPlano(orden)` = parte `text/plain` del mail (igualdad de strings); orden de 100 líneas → `content` ≤ 2.000 con "… y N productos más" y adjunto completo. `http.test.ts`: en una orden aceptada, el Discord fake recibe exactamente un mensaje con el mismo número que la respuesta y el mail. **Real:** smoke (B19) |
 | AC-24 | `idempotency.test.ts` + `delivery.test.ts`: reintento tras `aceptada` → 200 mismo número, 0 mails y 0 mensajes nuevos; 2 requests concurrentes con la misma key → 1 mail + 1 mensaje + `en_proceso`; 2 reintentos concurrentes con Discord `fallido` → un solo claim gana, 1 mensaje; payload distinto con la misma key → 422 sin envíos |
 | AC-25 | `delivery.test.ts`: mail `entregado` + Discord `fallido` (y al revés, y con `incierto`) → `201 aceptada`, estado del canal fallido persistido y **una** línea `canal_fallido` con `orden_aceptada: true`, sin datos personales |
 | AC-26 | `check:leak` (patrón de URL de webhook en todo archivo trackeado); `webhook.test.ts`: la URL nunca aparece en logs ni en errores lanzados; `wire.ts` no tiene ningún campo de Discord. Frontend verifica el bundle |
@@ -358,7 +410,7 @@ epoch-segundos):**
    pudo llegar. Nunca duplica, y es mucho menos probable que con un solo
    canal.
 7. **CGNAT:** falsos positivos del rate limit; umbrales configurables.
-8. **Ley 25.326:** texto de privacidad (art. 6), registro AAIP (art. 21)
+8. **Ley 25.326** (ADR-0020: nombre y teléfono siguen siendo datos personales): texto de privacidad (art. 6), registro AAIP (art. 21)
    y transferencia internacional (SES, Gmail, Discord). No bloquea el
    diseño; sí la salida a producción.
 
@@ -376,7 +428,9 @@ epoch-segundos):**
 
 ### Estimate
 
-**Tamaño L: ~24 a 31 horas** de ingeniería backend (antes: 16 a 22), sin
+**Tamaño L: ~24 a 31 horas** de ingeniería backend (antes: 16 a 22; la
+revisión 4 suma ~1 h de validación del nombre, HMAC derivado y tests, que
+entra en el rango vigente de `tasks.md`, ~23 a 30 h), sin
 contar el Terraform/CI de `devops-agent` ni el frontend. El aumento sale
 de Discord (render + webhook), la idempotencia por canal, el job de
 borrado y el `budget-guard` ampliado. Son **24 tareas (B1–B24)** en
@@ -384,7 +438,8 @@ borrado y el `budget-guard` ampliado. Son **24 tareas (B1–B24)** en
 
 ## Frontend
 
-**Autor:** `frontend-agent`. **Revisión 2 (2026-09-30).** **Repo:**
+**Autor:** `frontend-agent`. **Revisión 3 (2026-10-05b, ADR-0020:
+"Nombre y apellido" + teléfono).** **Repo:**
 `renovarte-catalogo` (rama `feature/carrito-orden-compra`). **Diseño:**
 construido sobre
 [`ux.md`](./ux.md), aprobado en la Fase 2, con los defaults del mockup para
@@ -411,7 +466,46 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 - Nota de referencia en `specs/constitution.md` del catálogo, igual que la
   de la 0016 y como pide B20. No es una enmienda.
 
-### Qué cambió en esta revisión
+### Qué cambió en la revisión 3 (2026-10-05b, ADR-0020)
+
+> **Rige sobre lo que diga cualquier línea de esta sección que hable de
+> "solo teléfono", "único campo" o "solo el teléfono" en el navegador.**
+> Esas líneas se corrigieron; si queda alguna, vale esta lista.
+
+1. **`OrderForm` con dos campos obligatorios**, en este orden: "Nombre y
+   apellido" (`name="nombre"`, `autocomplete="name"`,
+   `autocapitalize="words"`, `spellcheck="false"`, `enterkeyhint="next"`,
+   `maxlength="80"`) y "Teléfono" (`type="tel"`, `autocomplete="tel"`,
+   `inputmode="tel"`, `enterkeyhint="done"`). Sin `fieldset`/`legend`, sin
+   placeholder, sin aviso de privacidad. Todo textual de `ux.md`
+   "Formulario" y "Validación"; no se decide nada de layout ni copy.
+2. **Contrato (RFC §3.2, rev. 4):** `contacto = { nombre, telefono }` y
+   `CampoOrden` suma `"contacto.nombre"`. `wire.ts` lo copia literal.
+3. **Validación del nombre** (`validate-contact.ts`), idéntica a `ux.md` y
+   al RFC §3.2.1, con la **misma tabla de vectores** que B4 (ver
+   "Paridad cliente/servidor"). El cliente solo ayuda: el servidor vuelve a
+   validar.
+4. **Errores del servidor:** `contacto.nombre` con `requerido` → copy de
+   nombre vacío; `formato` y `largo` → "Revisá el nombre…" (el mismo copy
+   para los dos). `invalida` con `errores: []` (honeypot o cambio de
+   payload bajo la misma key) → error general (Q-F2a), nunca un error de
+   campo.
+5. **`idempotency_key`:** la huella suma el **nombre normalizado**. Cambiar
+   el nombre o el teléfono → key nueva. El servidor responde `invalida` con
+   `errores: []` ante la misma key con otro nombre o teléfono (RFC §5.4.1);
+   el cliente nunca debería provocarlo, y un test lo garantiza.
+6. **`sessionStorage` (AC-28):** solo nombre y teléfono como datos de
+   contacto, solo en la pestaña, nunca `localStorage`. Se agrega un
+   **borrador del formulario** (ux.md "Qué se guarda en el navegador":
+   al salir de cada campo y al enviar, no por tecla), que se vacía al
+   confirmarse. La confirmación guarda `nombre` y `telefono`. La respuesta
+   `aceptada` **no** trae el nombre: el cliente lo muestra desde su propio
+   estado (el de `checkout`, o el `confirmation-store` tras una recarga).
+7. **"Copiar detalle del pedido"** (`order-text.ts`) no incluye nombre ni
+   teléfono (AC-28, complemento 2026-10-05b).
+8. **Estimate** sube ~1 h (ver Estimate).
+
+### Qué cambió en la revisión 2
 
 1. **Spec enmendada (31 AC).** Mail + Discord, borrado a 60 días y
    registro seudonimizado son server-side o manuales: no agregan UI ni
@@ -449,7 +543,9 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
    - `nombre`, `presentacion` e `imagen` son un snapshot, porque una
      línea "Ya no está en el catálogo" tiene que seguir mostrando su
      nombre y el catálogo vigente ya no lo tiene.
-   - **Nunca** se persisten datos de contacto (AC-18, ux.md "Formulario").
+   - **Nunca** se persisten datos de contacto en `localStorage` (AC-18,
+     AC-28): `serialize` escribe solo claves de `CartLine`. El nombre y el
+     teléfono viven únicamente en `sessionStorage` (decisión 9).
    - Si el JSON guardado está corrupto o tiene otra versión, el carrito
      se trata como vacío sin romper nada (guard de parseo, como
      `isProduct`).
@@ -497,10 +593,13 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
    - Estados: `editando` → `enviando` → `confirmada` | `fallida` | `tope`
      | `rechazada_por_catalogo` | `invalida`.
    - **`idempotency_key`:** se guarda junto con la huella canónica del
-     payload (líneas, cantidades, `precio_visto`, total y teléfono
-     normalizado). "Enviar" o "Reintentar" con la misma huella **reusa**
-     la key. Con cualquier cambio, incluida la aplicación de precios
-     después de un `rechazada_por_catalogo`, se genera una **nueva** con
+     payload (líneas, cantidades, `precio_visto`, total, **nombre
+     normalizado** y teléfono normalizado; "normalizado" = la misma
+     función que valida: NFC, recorte y espacios internos colapsados para el
+     nombre). "Enviar" o "Reintentar" con la misma huella **reusa**
+     la key. Con cualquier cambio (incluido **cualquier cambio de nombre o de
+       teléfono**) y después de un `rechazada_por_catalogo`, se genera una
+       **nueva** con
      `crypto.randomUUID()` (inyectado). Vive solo en memoria (RFC §5.1).
    - **AC-24 (doble clic / reintento):**
      - Guard síncrono: el envío en curso se marca en un `ref` antes del
@@ -509,15 +608,20 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
        no alcanza por sí solo, porque no bloquea eventos).
      - "Reintentar envío" y el reintento por `token_vencido` mandan la
        misma key, y el servidor responde `200 aceptada` con el mismo
-       `numero_orden` si la primera sí había entrado.
+       `numero_orden` si la primera sí había entrado. Reusar la key con otro
+       nombre o teléfono daría `invalida` con `errores: []` (RFC §5.4.1);
+       la huella evita que el cliente lo mande.
      - `falla`/`en_proceso` (misma key en vuelo en el servidor) cae en la
        falla genérica; el "Reintentar" posterior reusa la key.
      - Límite conocido, sin decisión pendiente: si el visitante recarga
        **durante** "Enviando…", la key en memoria se pierde (RFC §5.1). Al
-       volver tiene que retipear el teléfono (AC-28 no lo guarda),
-       así que el reenvío es un envío nuevo con key nueva. La ventana es
-       de pocos segundos y ux.md ya pide "No cierres esta página". Queda
-       documentado como riesgo, no se agrega persistencia.
+       volver, el formulario se rehidrata desde el borrador de
+       `sessionStorage` (nombre y teléfono, decisión 9), así que el visitante
+       no retipea nada; la key en memoria igual se perdió, y la
+       decisión de la gate (2026-10-01, punto 1) de guardar la key del envío
+       en curso en `sessionStorage` de la pestaña sigue vigente y se
+       implementa en F11/F13 (no es dato de contacto, así que no entra en
+       la allowlist de AC-28).
 7. **`form_token` (RFC §3.1, §6.2):**
    - Al montar `/carrito` con líneas disponibles, se hace `GET
      /v1/estado`:
@@ -540,34 +644,56 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 8. **Honeypot `sitio_web`:** un input fuera de pantalla dentro de un
    wrapper `aria-hidden`, con `tabIndex={-1}` y `autocomplete="off"`. Su
    valor se manda tal cual; si un bot lo completa, el servidor rechaza.
-9. **Confirmación que sobrevive a la recarga (AC-28, ux.md
-   "Confirmación"; Q-F5 aprobada):**
-   - Módulo puro `src/lib/orders/confirmation-store.ts` sobre un
-     `Storage` inyectable (en producción, `sessionStorage`), clave
-     `renovarte:orden-confirmada:v1`.
-   - Se escribe **solo** después de `aceptada`, nunca mientras se edita
-     el formulario. Proyección por allowlist, nunca spread:
-     `{ numero_orden, lineas: [{nombre, presentacion, cantidad,
-     precio}], total, telefono }`. **Nunca** otro dato de contacto.
-   - Se borra cuando la ruta deja de ser `/carrito`:
+9. **`sessionStorage`: borrador del formulario y confirmación que
+   sobrevive a la recarga (AC-28, ux.md "Formulario" y "Confirmación";
+   Q-F5 aprobada, ampliada por ADR-0020 a nombre y teléfono):**
+   - **Allowlist de AC-28 (todo lo que el frontend puede dejar en el
+     navegador, y dónde):**
+
+     | Dato | Dónde | Claves permitidas | Cuándo se escribe | Cuándo se borra |
+     |---|---|---|---|---|
+     | Carrito | `localStorage`, `renovarte:carrito:v1` | solo de `CartLine`, **nunca contacto** | cada cambio | nunca (AC-5) |
+     | Borrador del formulario | `sessionStorage`, `renovarte:contacto-borrador:v1` | `{ nombre, telefono }` | blur de cada campo y al enviar (no por tecla) | al confirmarse la orden, y al salir de `/carrito` |
+     | Confirmación | `sessionStorage`, `renovarte:orden-confirmada:v1` | `{ numero_orden, lineas: [{nombre, presentacion, cantidad, precio}], total, nombre, telefono }` | solo después de `aceptada` | al salir de `/carrito` |
+     | `idempotency_key` en curso (gate 2026-10-01) | `sessionStorage`, `renovarte:envio-en-curso:v1` | `{ idempotency_key, huella }` (la huella es un hash, **sin** nombre ni teléfono en claro) | al empezar a enviar | al terminar el envío o salir de `/carrito` |
+
+     `nombre` y `telefono` son los **únicos** datos de contacto; ningún
+     otro (`email`, `direccion`, `localidad`) ni siquiera si el objeto que
+     llega los trae.
+   - Módulo puro `src/lib/orders/confirmation-store.ts` sobre un `Storage`
+     inyectable (en producción, `sessionStorage`) para la confirmación, y
+     `src/lib/orders/contact-draft.ts` con la misma forma para el
+     borrador. Ambos proyectan por **allowlist**, nunca con spread, y
+     ante JSON corrupto o de otra versión devuelven "nada".
+   - **El nombre en la confirmación** lo resuelve el cliente: la respuesta
+     `aceptada` (RFC §3.2/§7) no lo repite. Al confirmar, el nombre
+     **normalizado** (el mismo valor que se envió) pasa del estado del
+     formulario a la confirmación y al `confirmation-store`; tras una
+     recarga se lee de ahí. Se renderiza como texto plano (React escapa) con
+     `break-words`.
+   - Se escribe la confirmación **solo** después de `aceptada`, nunca
+     mientras se edita el formulario; en ese momento se borra el borrador.
+   - Se borra todo (borrador, confirmación y key en curso) cuando la ruta
+     deja de ser `/carrito`:
      - navegación dentro del sitio: el `CartProvider` lo hace al cambiar
        `usePathname()`;
      - carga completa de otra página del sitio (link externo que vuelve,
        URL tipeada, "atrás" desde otro origen a una página que no sea
-       `/carrito`): el `CartProvider` la borra al montar en cualquier
+       `/carrito`): el `CartProvider` lo borra al montar en cualquier
        ruta que no sea `/carrito`;
      - cerrar la pestaña: lo hace el navegador (`sessionStorage`).
-   - Así la recarga sobre `/carrito` sigue mostrando el número, "navegar
-     a otra página y volver" muestra el carrito vacío, y el doble montaje
-     de StrictMode no la borra.
+   - Así la recarga sobre `/carrito` sigue mostrando el número (y, sin
+     confirmar, los dos campos), "navegar a otra página y volver" muestra el
+     carrito vacío y el formulario vacío, y el doble montaje de StrictMode
+     no borra nada.
    - Límite conocido: si desde la confirmación el visitante va a otro
      origen (p.ej. `ig.me` en la misma pestaña) y cierra el navegador sin
-     volver, el dato vive hasta que se cierre la pestaña, en storage
-     aislado por origen. `ContactChannels` abre Instagram con
-     `target="_blank"` (ux.md), lo que minimiza el caso.
+     volver, el dato (nombre y teléfono) vive hasta que se cierre la
+     pestaña, en storage aislado por origen. `ContactChannels` abre
+     Instagram con `target="_blank"` (ux.md), lo que minimiza el caso.
    - El carrito persistido (`localStorage`) nunca tiene contacto (AC-5,
-     AC-18): lo garantiza `serialize` de F4, que escribe solo claves de
-     `CartLine`.
+     AC-18, AC-28): lo garantiza `serialize` de F4, que escribe solo claves
+     de `CartLine`.
 10. **Chat, "agregado" por card:** `ChatPanel` devuelve `null` cuando está
     cerrado, así que el estado local de la card se perdería. Por eso
     "agregado" se guarda en el **reducer del chat** (acción nueva
@@ -607,12 +733,13 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 | Archivo | Responsabilidad |
 |---|---|
 | `src/lib/contact.ts` | Constantes `RENOVARTE_EMAIL`, `RENOVARTE_TELEFONO` (`1130579528`, enmienda 2026-10-05), `INSTAGRAM_USER`, `INSTAGRAM_DM_URL` (`https://ig.me/m/renovarte_by_juli`), `telefonoHref()` y un helper `mailtoConsulta(numero)`. Única fuente para confirmación, banners y `noscript` |
-| `src/lib/orders/wire.ts` | Copia literal de `src/wire.ts` de `renovarte-ordenes` (B3, RFC §3 rev. 3: `lineas` 1..100, `contacto = { telefono }`), con comentario `v: 1` y la fuente, más guards de runtime `isEstadoResponse` / `isCrearOrdenResponse` (mismo estilo que `src/lib/chat/types.ts`) |
+| `src/lib/orders/wire.ts` | Copia literal de `src/wire.ts` de `renovarte-ordenes` (B3, RFC §3 rev. 4: `lineas` 1..100, `contacto = { nombre, telefono }`, `CampoOrden` con `"contacto.nombre"`), con comentario `v: 1` y la fuente, más guards de runtime `isEstadoResponse` / `isCrearOrdenResponse` (mismo estilo que `src/lib/chat/types.ts`) |
 | `src/lib/orders/client.ts` | `fetchEstado()` y `crearOrden()` con puertos inyectados; timeout de 15 s; normalización a `OrderOutcome` (decisión 5) |
 | `src/lib/orders/checkout.ts` | Reducer puro del envío, huella del payload, guard de doble envío y reglas de `idempotency_key` y `form_token` con espera mínima de 3,5 s (decisiones 6 y 7) |
-| `src/lib/orders/confirmation-store.ts` | Guardar / leer / borrar la confirmación en un `Storage` inyectable, con proyección por allowlist (AC-28, decisión 9) |
-| `src/lib/orders/validate-contact.ts` | Validación pura de AC-9 con las reglas y el copy **textual** de ux.md "Validación". Normaliza con trim. Devuelve errores por campo en el orden del formulario |
-| `src/lib/orders/order-text.ts` | Texto plano de "Copiar detalle del pedido" (formato de ux.md) |
+| `src/lib/orders/confirmation-store.ts` | Guardar / leer / borrar la confirmación (con `nombre` y `telefono`) en un `Storage` inyectable, con proyección por allowlist (AC-28, decisión 9) |
+| `src/lib/orders/contact-draft.ts` | Borrador del formulario (`{ nombre, telefono }`) en un `Storage` inyectable: guardar en blur y al enviar, leer al montar, borrar al confirmar o salir de `/carrito`. Allowlist de 2 claves (AC-28, decisión 9) |
+| `src/lib/orders/validate-contact.ts` | Validación pura de AC-9 con las reglas y el copy **textual** de ux.md "Validación", para nombre y teléfono. `normalizeNombre()` (NFC, recorte, colapso de espacios internos) y `normalizeTelefono()` se exportan y las usa también la huella de `checkout`. Devuelve errores por campo en el orden del formulario (nombre, teléfono). Mismos vectores que B4 (ver "Paridad cliente/servidor") |
+| `src/lib/orders/order-text.ts` | Texto plano de "Copiar detalle del pedido" (formato de ux.md). **Sin nombre ni teléfono** (AC-28); un test lo verifica con un contacto canario |
 | `src/lib/cart/model.ts` | Tipos `CartLine`/`CartState` y operaciones puras: `addProduct`, `addCombo`, `setCantidad`, `removeLine`/`restoreLine` (deshacer en la misma posición), `clear`, `unidadesDisponibles`, `total`, `parseStored` y `serialize`. Constante `MAX_POR_LINEA` (sin tope de líneas en el cliente, decisión 4) |
 | `src/lib/cart/revalidate.ts` | `revalidateCart(lines, catalogo)` y `applyRechazoCatalogo(lines, respuesta)`, puras (AC-15) |
 | `src/lib/cart/store.ts` | Store externo: `subscribe`/`getSnapshot`/`getServerSnapshot` sobre un `Storage` inyectable, evento `storage` y claves versionadas |
@@ -627,12 +754,12 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 | `src/components/cart/CartEmpty.tsx` | Bloque punteado, "Ver catálogo" y "Pedile un combo a Colibrí" (`openChat`) |
 | `src/components/cart/CartNotice.tsx` | Aviso neutro `sage-50` `role="status"`: revalidación, precios actualizados al enviar y tope al entrar |
 | `src/components/cart/CartSummary.tsx` | Total y "No se cobra nada en este paso…" |
-| `src/components/orders/OrderForm.tsx` | "Tu teléfono": un solo campo, hint y error con `aria-describedby`, `novalidate`, honeypot, sin aviso de privacidad (retirado), "Enviar orden" y estado "Enviando…" con `readonly` |
+| `src/components/orders/OrderForm.tsx` | "Tus datos": dos campos obligatorios, "Nombre y apellido" y "Teléfono" (atributos de ux.md), cada uno con hint y error con `aria-describedby` y `aria-invalid`, `novalidate`, sin `fieldset`/`legend`, sin placeholder, honeypot, sin aviso de privacidad (retirado), borrador en `sessionStorage` (blur y envío), "Enviar orden" y estado "Enviando…" con ambos inputs `readonly` |
 | `src/components/orders/FormErrorSummary.tsx` | Resumen de errores enfocable; cada ítem es un botón que enfoca su campo |
 | `src/components/orders/OrderSendBanner.tsx` | `role="alert"`, variantes falla (con "Reintentar envío") y tope (sin "Reintentar"), canales y "Copiar detalle del pedido" |
 | `src/components/orders/ContactChannels.tsx` | Teléfono de RenovArte con `tel:` más "Copiar", email con `mailto:` más "Copiar", e Instagram MD con `target="_blank" rel="noopener"` |
 | `src/components/orders/CopyButton.tsx` | Portapapeles con label temporal ("Copiado" por 1,6 s, timer inyectable). Si falla: selecciona el texto o usa un `textarea` readonly |
-| `src/components/orders/OrderConfirmation.tsx` | Número, "Qué sigue", canales, "Lo que pediste" y "Volver al catálogo"; foco en el `h1` |
+| `src/components/orders/OrderConfirmation.tsx` | Número, "Qué sigue" ("RenovArte va a contactar a {nombre y apellido} al {teléfono}…", nombre como texto plano con `break-words`), canales, "Lo que pediste" y "Volver al catálogo"; foco en el `h1` |
 | `src/components/chat/ChatComboAddToCart.tsx` | Client. Botón "Agregar combo al carrito" / "Agregar otra vez" (mismo nodo), confirmación "✓ Agregaste…" y link "Ver carrito" |
 | `src/components/chat/ChatAnnouncer.tsx` | Live region `role="status"` dentro del diálogo, fuera del `role="log"` |
 | `src/app/carrito/page.tsx` | Server/SSG. `metadata` con title "Tu carrito" (el template agrega "— RenovArte") y `robots: { index: false }` (verificado en `node_modules/next/dist/docs/.../generate-metadata.md`). Mapa reducido del catálogo, `<noscript>` de ux.md y padding inferior ≥ 104px |
@@ -663,9 +790,12 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 | `GET estado` → `no_disponible` o error (al renovar el token antes de enviar) | Banner "Tu orden no se envió" (falla genérica) | Banner | Intactos |
 | `POST` → `aceptada` (201 primera vez / 200 reintento idempotente; "al menos un canal confirmó", invisible para el visitante) | Confirmación con `numero_orden` | `h1` | Carrito vaciado; confirmación en `sessionStorage` (allowlist de AC-28) |
 | `POST` → `rechazada_por_catalogo` | Precios actualizados y líneas no disponibles; aviso "Los precios se actualizaron mientras completabas tus datos…" | Aviso | Líneas actualizadas (el total se recalcula localmente; `total_vigente` coincide por contrato, Q-F6 cerrada; si difiere, gana el local y el servidor revalida); formulario intacto; la próxima key es nueva |
+| `POST` → `invalida` con `campo` `contacto.nombre` (`requerido`) | Error del nombre + resumen, con el copy de nombre vacío de ux.md | Resumen | Intactos |
+| `POST` → `invalida` con `campo` `contacto.nombre` (`formato` o `largo`) | Error del nombre + resumen, con el copy "Revisá el nombre…" de ux.md (el mismo para los dos códigos) | Resumen | Intactos |
 | `POST` → `invalida` con `campo` `contacto.telefono` | Error del teléfono + resumen, con el copy de ux.md | Resumen | Intactos |
+| `POST` → `invalida` con ambos campos | Un ítem por campo, en el orden del formulario (nombre, teléfono) | Resumen | Intactos |
 | `POST` → `invalida` `form_token` / `token_vencido` (vencido o < 3 s) | **No visible**: token nuevo, espera de 3,5 s y 1 reintento con la misma key | — | — |
-| `POST` → `invalida` sin campo mapeable (`lineas`, `total_visto`, `null`, `errores: []`, u otro problema de token) | Error general arriba del formulario (copy: Q-F2) | Error general | Intactos |
+| `POST` → `invalida` sin campo mapeable (`lineas`, `total_visto`, `null`, `errores: []` —honeypot o misma key con otro nombre/teléfono—, u otro problema de token) | Error general arriba del formulario (copy: Q-F2) | Error general | Intactos |
 | `POST` → `tope_alcanzado` | Banner de tope, sin "Reintentar", con canales y "Copiar detalle" | Banner | Intactos |
 | `POST` → `falla` (cualquier `codigo`: `limite_frecuencia`, `mantenimiento` por `flood`/corte manual, `en_proceso`, etc.), 5xx sin body, JSON inválido, `resultado` desconocido, red, timeout de 15 s, URL no configurada | Banner "Tu orden no se envió" con "Reintentar envío" (misma key si no hubo cambios), canales y "Copiar detalle" | Banner | Intactos |
 
@@ -686,27 +816,43 @@ nunca** lleva `nombre`/`presentacion` de producto ni ninguna clave fuera de
 | AC-6 | `cart-model.test.ts` (`addCombo` suma 1 de cada uno); `chat-combo-card.test.tsx` (botón, `aria-describedby`, sufijo sr-only); `chat-reducer.test.ts` (`COMBO_ADDED`) | Combo por `routeWebSocket` → "Agregar combo" → líneas con el mismo nombre y precio que la card; "Agregar otra vez" suma |
 | AC-7 | `chat-reducer.test.ts`: `COMBO_ADDED` no toca `isOpen` ni `messages` | Después de agregar, el panel sigue abierto con el hilo; "Ver carrito" → `/carrito` con foco en el `h1`; reabrir el FAB muestra el hilo y "Agregar otra vez" |
 | AC-8 | `cart-view` markup: vacío sin `<form>` ni "Enviar orden"; solo no disponibles, sin formulario | `/carrito` vacío no ofrece envío |
-| AC-9 | `validate-contact.test.ts`: tabla por regla y copy textual; `order-form.test.tsx`: labels, `autocomplete`, `aria-describedby`, `novalidate`, `fieldset`/`legend` | Enviar vacío → resumen enfocado y **ningún** POST; corregir un campo al perder el foco borra su error |
-| AC-10 | `order-confirmation.test.tsx`: número, "Qué sigue" con solo los medios dados, `mailto` con asunto, link a `ig.me` y resumen | POST mock 201 → confirmación con `RA-48271`, carrito vacío y contador oculto; ir a `/` y volver → vacío |
+| AC-9 | `validate-contact.test.ts`: tabla por regla y copy textual para **nombre y teléfono**, con los **mismos vectores que B4** (ver "Paridad cliente/servidor"); error de servidor `contacto.nombre` `requerido`/`formato`/`largo` → copy correcto; `order-form.test.tsx`: dos campos en el orden nombre, teléfono; labels visibles; `name`, `autocomplete="name"`/`"tel"`, `autocapitalize`, `spellcheck`, `enterkeyhint`, `maxlength="80"`, `inputmode`; sin placeholder; `aria-describedby`; `novalidate`; **sin** `fieldset`/`legend`; sin email, dirección ni localidad | Enviar vacío → resumen con **dos** ítems enfocado y **ningún** POST; solo nombre vacío → un ítem; nombre de 81 caracteres → "Revisá el nombre…"; "Madonna" y "Ana Pérez" pasan; corregir un campo al perder el foco borra su error; ítem del resumen enfoca su campo; POST mock 422 con `contacto.nombre` (`requerido`, `formato`, `largo`) → error del nombre |
+| AC-10 | `order-confirmation.test.tsx`: número, "Qué sigue" con **nombre y teléfono** dados ("RenovArte va a contactar a {nombre} al {teléfono}…"), un nombre largo o con `<script>` sale escapado y con `break-words`, `mailto` con asunto, link a `ig.me` y resumen | POST mock 201 (la respuesta **sin** el nombre) → confirmación con `RA-48271`, el nombre y el teléfono tipeados, carrito vacío y contador oculto; ir a `/` y volver → vacío |
 | AC-11 | El cliente no pide copia: no hay UI ni campo para eso. La entrega es server-side | Cubierto por el body capturado de AC-17 |
-| AC-12 | `order-form.test.tsx`: no hay campos de pago, envío, cupón ni comentario | Recorrido completo sin medios de pago ni envío |
+| AC-12 | `order-form.test.tsx`: no hay campos de pago, envío, cupón ni comentario (los únicos campos de datos son nombre y teléfono) | Recorrido completo sin medios de pago ni envío |
 | AC-13 | Parte cliente: `orders-client.test.ts`, `precio_visto`/`total_visto` = lo que muestra la pantalla; `numero_orden` se muestra tal cual llega. El contenido del mail es server-side (`## Backend`) | En F20: una orden real, el número de pantalla coincide con el del mail |
 | AC-14 | `no-runtime-backend.test.ts` (nuevo): ningún `route.ts`/`route.js`, `middleware.*`, `proxy.*` ni `"use server"` bajo `src/` | `pnpm build`: `/carrito` listada como estática |
 | AC-15 | `cart-revalidate.test.ts`: precio cambiado, id inexistente y `applyRechazoCatalogo`; `checkout.test.ts`: key nueva después del rechazo | `localStorage` sembrado con un precio viejo o un id inexistente → aviso y notas; POST mock 409 → aviso enfocado y reenvío con una key distinta |
 | AC-16 | `catalog-slim.test.ts`: solo 5 claves; `check:leak` existente sobre `.next` | — |
-| AC-17 | `orders-client.test.ts`: el builder emite exactamente las claves de `CrearOrdenRequest` (sin `to`/`cc`/`bcc`/`reply_to`/`webhook`/`canal`); no hay UI para elegir destino. El rechazo de claves extra es server-side | Body capturado: solo claves del contrato |
-| AC-18 | `cart-store.test.ts`: lo guardado nunca contiene claves de contacto; `checkout.test.ts`: contacto solo en memoria | Después de un envío, `localStorage` sin datos de contacto (ver AC-28 para `sessionStorage`) |
+| AC-17 | `orders-client.test.ts`: el builder emite exactamente las claves de `CrearOrdenRequest`, con `contacto` = `{ nombre, telefono }` y el nombre **normalizado** (sin `to`/`cc`/`bcc`/`reply_to`/`webhook`/`canal`); no hay UI para elegir destino. El rechazo de claves extra es server-side | Body capturado: solo claves del contrato |
+| AC-18 | `cart-store.test.ts`: lo guardado nunca contiene claves de contacto (un `CartLine` con `nombre`/`telefono` extra no los serializa); `checkout.test.ts`: contacto solo en memoria y en `sessionStorage` (AC-28), nunca en el cliente de órdenes más allá del body; `order-text.test.ts`: "Copiar detalle" con un nombre y un teléfono canario no los contiene | Antes y después de un envío, `localStorage` sin nombre ni teléfono (canarios); ningún dato de contacto en URL ni en `document` fuera del formulario y la confirmación; "Copiar detalle del pedido" sin nombre ni teléfono (ver AC-28 para `sessionStorage`) |
 | AC-19 | Parte cliente: `order-form.test.tsx`, honeypot `sitio_web` fuera de pantalla, `aria-hidden`, `tabIndex={-1}`; `checkout.test.ts`, el POST siempre lleva el `form_token` del GET. Rate limit, cupo y verificación del token son server-side | — |
 | AC-20 | `orders-client.test.ts`: 500, 502 sin body, JSON inválido, `resultado` desconocido, `falla`/`mantenimiento`, `falla`/`en_proceso`, red, timeout de 15 s (timer fake) → `falla`, nunca `aceptada`; `checkout.test.ts`: "Reintentar" reusa la key | POST abortado / 500 → banner, carrito y datos intactos; "Reintentar" manda la **misma** `idempotency_key` (bodies capturados); `page.clock` para el timeout |
 | AC-21 | — | Con el servicio de órdenes abortado, la grilla, el filtro, la búsqueda, la ficha y el chat funcionan (se reusan pasos de `catalog.spec.ts`/`chat.spec.ts`); `catalog.spec.ts` sigue verde con el header sticky |
 | AC-22 | `orders-client.test.ts` (`tope_alcanzado` en GET y POST); `order-send-banner.test.tsx` (sin "Reintentar", con canales) | Tope al entrar (sin formulario) y tope al enviar (banner); GET `no_disponible` al entrar → formulario visible (no es tope) |
 | AC-23 | **No aplica al frontend** (entrega a Discord server-side; el visitante no ve canales). El cliente no cambia | — |
-| AC-24 | `checkout.test.ts`: dos `SUBMIT` seguidos → un solo efecto de envío; "Reintentar" y el reintento por `token_vencido` → misma key; cambio de teléfono/cantidad → key nueva | Doble clic en "Enviar orden" (`dblclick` y dos `click` sin esperar) → **un** POST capturado; POST abortado → "Reintentar" → el mock responde `200 aceptada` con el mismo `RA-48271` y la key capturada es idéntica en los dos bodies. No-duplicación en mail/Discord: server-side |
+| AC-24 | `checkout.test.ts`: dos `SUBMIT` seguidos → un solo efecto de envío; "Reintentar" y el reintento por `token_vencido` → misma key; cambio de **nombre**, de teléfono o de cantidad → key nueva; reintento sin cambios → misma key; la huella cambia con el nombre normalizado ("Ana  Pérez" y "Ana Pérez" → misma huella) | Doble clic en "Enviar orden" (`dblclick` y dos `click` sin esperar) → **un** POST capturado; POST abortado → "Reintentar" → el mock responde `200 aceptada` con el mismo `RA-48271` y la key capturada es idéntica en los dos bodies. No-duplicación en mail/Discord: server-side |
 | AC-25 | **No aplica al frontend** más allá de AC-10/AC-20: `aceptada` con un solo canal se ve igual que con dos | — |
 | AC-26 | `check:leak` con el patrón de webhook de Discord sobre `.next` y `public/data` (F18); `src/` no referencia Discord | — |
 | AC-27, AC-29, AC-30, AC-31 | **No aplican al frontend** (registro seudonimizado y acceso al canal; AC-29 y AC-31 retirados el 2026-10-05) | — |
-| AC-28 | `confirmation-store.test.ts`: lo guardado tiene solo `numero_orden`, líneas, total y `telefono` (nunca otro dato, aunque se le pase un contacto con más campos); borrar/leer con `Storage` fake; JSON corrupto → nada | Después de 201: `sessionStorage` solo con el teléfono como dato de contacto; recarga en `/carrito` → mismo número; navegar a `/` → la clave ya no está en `sessionStorage`; `page.goto('/')` (carga completa) → tampoco; página nueva del mismo contexto → sin confirmación; `localStorage` nunca con contacto |
+| AC-28 | `confirmation-store.test.ts`: lo guardado tiene solo `numero_orden`, líneas, total, `nombre` y `telefono` (nunca otro dato, aunque se le pase un contacto con `email`/`direccion`/`localidad`); `contact-draft.test.ts`: solo `{nombre, telefono}`, borrar/leer, JSON corrupto → nada; borrar/leer con `Storage` fake; `order-text.test.ts` sin nombre ni teléfono | Antes de enviar: nombre y teléfono tipeados → recarga → los campos vuelven (borrador); `localStorage` sin ellos. Después de 201: `sessionStorage` con **solo nombre y teléfono** como datos de contacto (claves de la allowlist, sin ningún otro) y sin borrador; recarga en `/carrito` → mismo número y "RenovArte va a contactar a {nombre} al {teléfono}"; navegar a `/` → ninguna clave de contacto en `sessionStorage`; `page.goto('/')` (carga completa) → tampoco; página nueva del mismo contexto → sin confirmación; `localStorage` nunca con contacto |
 | Sin JS / reduced-motion | Markup de `noscript` en la ficha y en `/carrito` | Contexto con `javaScriptEnabled: false`: el link del header navega y se ven los avisos `noscript`; `reducedMotion: "reduce"` |
+
+**Paridad cliente/servidor del nombre.** Los vectores de `validate-contact.test.ts`
+son los de la tabla de AC-9 de `## Backend` (B4), copiados textualmente a un
+fixture del catálogo (`tests/unit/fixtures/nombre-vectores.ts`, con la
+fuente anotada). Cada vector lleva el veredicto de `ux.md`/RFC §3.2.1:
+vacío y solo espacios → `requerido`; 1 carácter → `formato`; "Li" → ok;
+exactamente 80 → ok; 81 → `largo`; 80 con espacios alrededor → ok (se mide
+tras recortar); solo dígitos o símbolos → `formato`; "Madonna" → ok;
+"O'Brien", "María-José", "Ñandú", "李雷", "Åsa" → ok; NFC y NFD del mismo
+nombre → mismo normalizado; espacios internos múltiples → colapsados;
+CR/LF, tabulador, `Cc`, U+2028/9, bidi y sustituto suelto → `formato`. El
+cliente aplica el mapeo del servidor: `requerido` → copy de nombre vacío;
+`formato` y `largo` → "Revisá el nombre…". Nota: `maxlength="80"` del
+input corta el texto crudo, por lo que "81 caracteres" se prueba contra la
+función pura, no tipeando. Si B4 cambia un vector, el fixture se
+re-sincroniza (el diff es el check, como con `wire.ts`).
 
 `form_token`: `checkout.test.ts` cubre que un token de < 3,5 s espera lo
 que falta, que uno de > 1 h 50 min se renueva y que `token_vencido`
@@ -716,12 +862,14 @@ produce exactamente un reintento con la misma key (y un segundo
 ### Dependencias con otras secciones
 
 - **B3 (`wire.ts`)** → F2. Mientras no exista, F2 copia los tipos del RFC
-  §3 (revisión 2) textualmente y se re-sincroniza cuando B3 cierre (un
+  §3 (revisión 4) textualmente y se re-sincroniza cuando B3 cierre (un
   diff vacío es el check).
 - **`ux-agent` (Q-F2)** → F7, F9, F12 y F14. El orquestador le pasa las
   cuatro preguntas durante la implementación; cada una de esas tareas no
   arranca su parte visible hasta tener la respuesta aprobada por un
   humano.
+- **B4 (vectores del nombre)** → F12 (fixture compartido, ver "Paridad
+  cliente/servidor del nombre").
 - **B18 (harness local)** → F20 (smoke manual contra el contrato real).
 - **B20 + `## Infra`** → F20. La URL de producción de
   `NEXT_PUBLIC_ORDERS_API_URL` se carga en Vercel **solo en Production**,
@@ -734,7 +882,11 @@ produce exactamente un reintento con la misma key (y un segundo
 
 ### Divergencias y preguntas abiertas
 
-Sin divergencias con `## Backend` / RFC rev. 2 ni con la spec enmendada.
+Sin divergencias con `## Backend` / RFC rev. 4 ni con la spec enmendada
+(2026-10-05b). Nota para el orquestador: la **Enmienda 2026-10-05** al
+principio de este archivo (puntos 3 y 4: "solo el teléfono", "un único
+campo") quedó superada por ADR-0020 y está fuera de mi sección; esta
+sección ya no la sigue.
 
 **Cerradas en esta revisión:**
 
@@ -744,8 +896,8 @@ Sin divergencias con `## Backend` / RFC rev. 2 ni con la spec enmendada.
   `flood` van a la falla genérica.
 - **Q-F4** → token de < 3 s = `token_vencido`; espera mínima del cliente
   de 3,5 s (decisión 7).
-- **Q-F5** → aprobado: teléfono (antes email/teléfono) en `sessionStorage` de la pestaña
-  mientras esté en `/carrito` (AC-28, decisión 9).
+- **Q-F5** → aprobado: nombre y teléfono en `sessionStorage` de la pestaña
+  mientras esté en `/carrito` (AC-28, decisión 9; ADR-0020).
 - **Q-F6** → `total_vigente` se calcula igual que el total local.
 
 **Abierta (va a `ux-agent` durante la implementación, no bloquea el
@@ -771,7 +923,8 @@ diseño):**
 
 **Riesgos conocidos (sin decisión pendiente):**
 
-- Recarga durante "Enviando…" pierde la key en memoria (decisión 6).
+- Recarga durante "Enviando…": la key del envío en curso se recupera de
+  `sessionStorage` y el formulario, del borrador (decisiones 6 y 9).
 - Confirmación en `sessionStorage` si el visitante sale a otro origen en
   la misma pestaña y no vuelve (decisión 9).
 - El header sticky puede interceptar clicks en los e2e existentes.
@@ -780,8 +933,10 @@ diseño):**
 
 ### Estimate
 
-**Tamaño L: ~28 a 36 h** de frontend (antes ~26–34 h). Son **20 tareas
-(F1–F20)**, con F20 dependiente del deploy real. El aumento viene de
+**Tamaño L: ~29 a 37 h** de frontend (antes ~28–36 h; **+~1 h** por la
+revisión 3: segundo campo con su validación y los vectores compartidos con
+B4, mapeo de errores de `contacto.nombre`, borrador en `sessionStorage` y
+sus e2e). Son **20 tareas (F1–F20)**, con F20 dependiente del deploy real. El aumento viene de
 AC-24 (guard de doble envío y sus e2e), AC-28 (`confirmation-store` y sus
 e2e) y AC-26 (`check:leak`); Q-F1 cerrada ahorra un poco.
 
@@ -789,7 +944,7 @@ e2e) y AC-26 (`check:leak`); Q-F1 cerrada ahorra un poco.
 |---|---|---|
 | Base pura (contacto, wire, modelo, store, revalidación) | F1–F5 | ~6–8 h |
 | Header, ficha y shell de `/carrito` | F6–F9 | ~6–8 h |
-| Cliente de órdenes, formulario, envío y confirmación | F10–F15 | ~10,5–12,5 h |
+| Cliente de órdenes, formulario, envío y confirmación | F10–F15 | ~11,5–13,5 h |
 | Chat | F16–F17 | ~3–4 h |
 | Cierre (AC-14/18/21/26, docs, gate, smoke real) | F18–F20 | ~2,5–3,5 h |
 
@@ -798,7 +953,8 @@ Lo que puede mover el estimate:
 - el manejo del preflight CORS de `page.route` en la versión instalada
   de Playwright;
 - que el header sticky obligue a ajustar e2e existentes;
-- las respuestas de `ux-agent` a Q-F2.
+- las respuestas de `ux-agent` a Q-F2;
+- que B4 cambie algún vector del nombre antes de cerrar F12.
 
 ## Infra
 

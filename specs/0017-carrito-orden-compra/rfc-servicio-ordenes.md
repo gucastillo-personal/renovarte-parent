@@ -1,15 +1,37 @@
 # RFC — Servicio de órdenes (spec 0017)
 
-**Autor:** `backend-agent`. **Estado:** propuesta, revisión 3 (enmienda 2026-10-05). Pendiente de
+**Autor:** `backend-agent`. **Estado:** propuesta, revisión 4 (enmienda 2026-10-05b). Pendiente de
 aprobación del CTO/CEO en el gate de Fase 3, junto con las secciones
 `## Infra` (`devops-agent`) y `## Frontend` (`frontend-agent`) de
 `plan.md`.
 
+**Cambios de la revisión 4 (2026-10-05b, [ADR-0020](../../docs/decisions/ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md):
+el formulario pide "Nombre y apellido" y teléfono):**
+
+- **El contrato crece un campo:** `contacto` pasa a ser `{ nombre,
+  telefono }` (§3.2). Nuevo `CampoOrden` `"contacto.nombre"`. **Es un
+  cambio de contrato respecto de la revisión 3**, sin impacto en código ya
+  escrito porque B3 (`wire.ts`) todavía no existe; F2 copia estos tipos.
+- **Validación del nombre idéntica a `ux.md`** (§3.2.1): tras recortar, 2 a
+  80 caracteres y al menos una letra de cualquier alfabeto, sin exigir más
+  de una palabra. Se define la normalización (NFC, recorte y colapso de
+  espacios) y el escape por canal.
+- **Mail y Discord** llevan el nombre en el cuerpo (§9.1, §10.2); el asunto
+  y la primera línea de Discord siguen sin datos personales.
+- **`payload_hmac` incluye el nombre** (§5.4.1), con una clave derivada por
+  `idempotency_key`.
+- **Datos personales** (§7) ahora citan el ADR-0020 (que supersede al
+  ADR-0017): el nombre y el teléfono se procesan en memoria; `IDEM#`, logs
+  y contadores no los guardan.
+- **No cambian** la infraestructura, el IAM, las env vars ni las alarmas
+  (§13): no hay trabajo nuevo para `devops-agent`.
+
 **Cambios de la revisión 3 (2026-10-05, enmienda de la spec: recorte de
 datos del MVP):**
 
-- **El contrato se achica:** `contacto` pasa a ser `{ telefono }`. Se
-  eliminan `nombre`, `email`, `direccion` y `localidad` del request
+- **El contrato se achica:** `contacto` pasa a ser `{ telefono }`
+  *(la revisión 4 vuelve a agregar `nombre`)*. Se eliminan `email`,
+  `direccion` y `localidad` del request
   (§3.2), `contacto_requerido` y los campos asociados de `CampoOrden`.
   **Es un cambio de contrato respecto de la revisión 2**, sin impacto en
   código ya escrito porque B3 (`wire.ts`) todavía no existe; F2 copia
@@ -51,7 +73,7 @@ datos del MVP):**
   (AC-23 a AC-29).
 - Aceptadas las divergencias de `devops-agent` (§13).
 
-**Alcance:** arquitectura del repo nuevo `renovarte-ordenes`. Cubre el
+**Alcance (rev. 4: datos personales = nombre y apellido + teléfono):** arquitectura del repo nuevo `renovarte-ordenes`. Cubre el
 contrato HTTP con `renovarte-catalogo`, la validación contra el catálogo
 publicado, la idempotencia por canal, los destinos fijos, el anti-abuso,
 los datos personales, el tope de USD 20/mes, el número de orden, los dos
@@ -157,8 +179,9 @@ interface CrearOrdenRequest {
   }>;                             // 1..100 líneas (Q-F1), producto_id sin repetir
   total_visto: number;            // entero ARS = Σ precio_visto × cantidad, lo que el visitante vio
   contacto: {
+    nombre: string;               // "Nombre y apellido", un solo campo; obligatorio; tras recortar, 2..80 caracteres y ≥ 1 letra (AC-9, §3.2.1)
     telefono: string;             // obligatorio; 8..15 dígitos tras quitar espacios, - ( ) + (AC-9)
-  };                              // único dato personal (revisión 3, 2026-10-05)
+  };                              // únicos datos personales (revisión 4, 2026-10-05b, ADR-0020)
   sitio_web?: "";                 // honeypot: debe venir ausente o vacío (§6.2)
 }
 ```
@@ -168,8 +191,9 @@ En todos los campos de texto se rechazan CR/LF, los caracteres de control
 U+2066–U+2069). Esto protege los headers del mail, el render de Discord
 (§10.2) y la legibilidad de los dos canales.
 
-El cliente **no** manda nombre, presentación ni subtotales de producto:
-el servidor los toma del catálogo publicado. Tampoco puede mandar
+El cliente **no** manda el nombre del producto, la presentación ni
+subtotales: el servidor los toma del catálogo publicado. (El `nombre` de
+`contacto` es el del visitante, no el de un producto.) Tampoco puede mandar
 destinatario, asunto, canal ni ningún otro campo de entrega.
 
 Respuestas:
@@ -202,7 +226,7 @@ type CrearOrdenResponse =
   | { v: 1; resultado: "falla"; codigo: "limite_frecuencia" | "envio_fallido" | "catalogo_no_disponible" | "en_proceso" | "estado_incierto" | "origen" | "mantenimiento" | "interno" };
 
 type CampoOrden =
-  | "contacto.telefono"
+  | "contacto.nombre" | "contacto.telefono"
   | "lineas" | "total_visto" | "form_token";
 ```
 
@@ -216,6 +240,57 @@ request, el código `contacto_requerido` y los campos `contacto.nombre`,
 `contacto.email`, `contacto.direccion`, `contacto.localidad` y `contacto`
 de `CampoOrden`. Un body con cualquiera de las claves quitadas es
 `invalida`/`no_permitido` (esquema estricto).
+
+**Diferencias con la revisión 3 (2026-10-05b):** `contacto` vuelve a
+llevar `nombre` además de `telefono`; `CampoOrden` suma `"contacto.nombre"`.
+Siguen quitados `email`, `direccion` y `localidad` (y `contacto_requerido`):
+un body con cualquiera de esas claves es `invalida`/`no_permitido`. Los
+códigos de error del nombre están en §3.2.1.
+
+#### 3.2.1 Validación y normalización del nombre y apellido (AC-9)
+
+Misma regla que `ux.md`, aplicada por el servidor en `validate-order.ts`
+(defensa en profundidad: el cliente solo ayuda). Pasos, en este orden:
+
+1. Debe ser `string`; si falta → `requerido`; si no es string → `formato`.
+2. **Normalización:** `normalize("NFC")` y recorte de espacios al principio
+   y al final (Unicode `White_Space`, incluido NBSP). Si la cadena es
+   vacía → `requerido` (un nombre de solo espacios cuenta como vacío).
+3. Rechazo (`formato`) si contiene CR/LF, cualquier carácter de control
+   (`Cc`, incluido el tabulador), separadores de línea/párrafo U+2028 y
+   U+2029, controles bidireccionales (U+202A–U+202E, U+2066–U+2069) o
+   sustitutos sueltos (no `isWellFormed()`). Los espacios internos
+   (`Zs`, incluido NBSP) se aceptan y **se colapsan** a un solo espacio
+   (`/\s+/gu` → `" "`): solo achica, nunca vuelve inválido un nombre que
+   el cliente aceptó.
+4. **Largo:** se mide en puntos de código **después** de recortar y
+   normalizar. `> 80` → `largo`; `< 2` → `formato`. Como el cliente tiene
+   `maxlength="80"` sobre el texto crudo, un nombre aceptado en el cliente
+   nunca supera 80 aquí (los puntos de código no superan las unidades
+   UTF-16, y NFC/colapso solo achican).
+5. **Letra:** debe cumplir `/\p{L}/u` (cualquier alfabeto; las tildes, la
+   `ñ`, los apóstrofos y los guiones se aceptan como caracteres, pero no
+   cuentan como letra). Si no → `formato`. **No se exige más de una
+   palabra.**
+6. No se rechazan otros caracteres (apóstrofos, guiones, puntos, dígitos,
+   marcas combinantes, emoji): un filtro de "caracteres válidos" rechazaría
+   nombres reales. La seguridad no depende de filtrar sino de **escapar en
+   cada destino** (abajo).
+
+`largo` y `formato` del nombre se muestran con el mismo copy en el cliente
+(`ux.md`: "Revisá el nombre…"); `requerido` usa el copy de nombre vacío. El
+valor normalizado es el único que se usa de ahí en adelante (render y HMAC).
+
+**Escape por destino** (el nombre es texto no confiable):
+
+| Destino | Tratamiento |
+|---|---|
+| Headers del mail (`Subject`, `From`, `To`, `ReplyTo`) | **El nombre nunca va en un header.** SES v2 `SendEmail` con `Content.Simple` (no `Raw`): no hay MIME armado a mano, así que no hay inyección de headers. Un test verifica que el asunto no contiene el nombre |
+| Mail `text/html` | Escape de `& < > " '` en todo el texto; sin `href` ni `src` armados con el nombre |
+| Mail `text/plain` y adjunto `.txt` de Discord | Texto literal, una línea (ya no hay CR/LF); sin interpretación posible |
+| Mensaje de Discord | Dentro del bloque de código; cada `` ` `` → `ˋ` (U+02CB); `allowed_mentions: { parse: [] }` y `flags: 4` neutralizan `@everyone`, menciones y previews. El nombre nunca va en `username` |
+| CSV / planilla | **No existe ninguna exportación en este diseño.** Si alguna vez se agrega, hay que anteponer `'` a los valores que empiecen con `=`, `+`, `-`, `@`, tab o CR (inyección de fórmulas). Queda anotado como requisito en el runbook (B18) |
+| Logs y registro `IDEM#` | **Nunca** (§7). Los errores de validación solo llevan `campo` y `codigo`, jamás el valor |
 
 **Mapeo a los estados de `ux.md`:**
 
@@ -296,7 +371,7 @@ local: el servidor vuelve a validar el próximo envío igual.
   contacto.
 - "Reintentar envío" y el reintento automático por `token_vencido`
   **reusan la misma key**.
-- Cualquier cambio de línea, cantidad o contacto (incluido aplicar precios
+- Cualquier cambio de línea, cantidad o contacto (nombre o teléfono; incluido aplicar precios
   tras un `rechazada_por_catalogo`) genera una key nueva.
 - La key vive en memoria de la página.
 
@@ -380,7 +455,8 @@ Con el orden de operaciones de §6.5:
    `invalida` y `rechazada_por_catalogo` no la consumen.
 2. **Reserva:** `PutItem IDEM#<key>` con `attribute_not_exists(pk)`,
    `mail_estado = discord_estado = "enviando"`, los dos `_intento_en`,
-   `payload_hmac` (HMAC-SHA256 del payload canónico), `numero_orden`,
+   `payload_hmac` (HMAC-SHA256 del payload canónico, §5.4.1; incluye el
+   nombre y el teléfono sin guardarlos), `numero_orden`,
    `creado_en` y `expira_en` (Number, epoch-segundos, +90 días).
 3. **Si la key ya existe:**
    - `payload_hmac` distinto → `invalida` con `errores: []` (el cliente
@@ -411,6 +487,37 @@ Con el orden de operaciones de §6.5:
 7. Se agrega el resultado según la tabla de §5.3. Si es `aceptada` por
    primera vez: incremento del ledger (§8.2) y del contador de órdenes
    aceptadas por IP (§6.3), y respuesta `201`.
+
+### 5.4.1 Huella de idempotencia (`payload_hmac`) con nombre y teléfono
+
+**Decisión: el payload canónico incluye el nombre normalizado y el
+teléfono.** Sin ellos, un reintento con la misma key y otro nombre o
+teléfono pasaría el chequeo y se respondería `aceptada` con la orden vieja:
+RenovArte llamaría a la persona equivocada o a un número equivocado sin que
+nadie lo note. Con ellos, ese caso es `invalida` con `errores: []` (regla
+de la key de §5.1).
+
+Para que el HMAC no permita reconstruir el dato:
+
+- **Clave derivada por orden:** `k = HMAC-SHA256(secreto_hmac,
+  "payload-v1" ‖ idempotency_key)`; `payload_hmac = HMAC-SHA256(k,
+  canónico)`. Es la misma `secreto_hmac` de SSM (no hay un secreto nuevo)
+  con separación de dominio. Dos órdenes de la misma persona dan huellas
+  **no relacionables** entre sí, así que el registro no sirve para saber
+  que "esta persona ya compró".
+- **Serialización canónica sin ambigüedad:** `JSON.stringify` de un array
+  de orden fijo `[v, lineas ordenadas por producto_id (producto_id,
+  cantidad, precio_visto), total_visto, nombre_normalizado,
+  telefono_recortado]`. Nada de concatenar strings.
+- **Sin truncar** el resultado (256 bits) y comparación en tiempo constante.
+- **Límite que se acepta y documenta:** quien tuviera **a la vez** un
+  volcado de DynamoDB **y** `secreto_hmac` (SSM, otro servicio y otro IAM)
+  podría probar candidatos de teléfono (~10^8 posibles) contra la huella de
+  una orden. Con ambos accesos ya podría leer los mensajes del mail, que
+  son más ricos, así que no abre una superficie nueva. Por eso no se
+  agrega sal almacenada ni se omiten los campos del HMAC.
+- Lo que se guarda en `IDEM#` es **solo la huella**; ni el nombre ni el
+  teléfono ni ningún prefijo o longitud de ellos.
 
 **Presupuesto de tiempo:** catálogo 3 s (normalmente caché) + DynamoDB
 ~0,1 s + envíos en paralelo 4 s (+ hasta 1,5 s por un 429 de Discord,
@@ -549,7 +656,7 @@ Primero los chequeos más baratos, y la entrega al final:
    si está apagado, `tope_alcanzado` o `mantenimiento` según el motivo
    (§8.4), **sin escrituras**.
 2. Rate limit por IP (1 `UpdateItem`).
-3. Esquema, honeypot, `form_token` y regla del teléfono → `invalida`.
+3. Esquema, honeypot, `form_token` y reglas del nombre (§3.2.1) y del teléfono → `invalida`.
 4. Si la key ya existe (§5.4 paso 3), respuesta idempotente o claim de
    canales `fallido`.
 5. Catálogo (§4) → `rechazada_por_catalogo`.
@@ -560,23 +667,26 @@ Primero los chequeos más baratos, y la entrega al final:
 
 ## 7. Datos personales (AC-18, AC-26, AC-27, AC-30, Ley 25.326)
 
+Marco: [ADR-0020](../../docs/decisions/ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md)
+(supersede al ADR-0017).
+
 Principio: **el servicio procesa los datos personales en memoria y no los
 guarda.** El registro de la orden se guarda seudonimizado durante 90 días
 (decisión del CTO/CEO). **Hay dos copias completas, las dos fuera de
 AWS**: el mail en la casilla de RenovArte y el mensaje (más su adjunto)
 en el canal privado de Discord. La segunda es una decisión explícita del
 CTO/CEO para no perder órdenes si el mail cae en spam. **Desde la
-revisión 3 el único dato personal es el teléfono**, y ninguna de las dos
-copias tiene borrado automático (decisión 2026-10-05, riesgo aceptado por
-RenovArte para el MVP).
+revisión 4 los datos personales son el nombre y apellido y el teléfono**
+(ADR-0020), y ninguna de las dos copias tiene borrado automático (decisión
+2026-10-05, riesgo aceptado por RenovArte para el MVP).
 
 | Dato | Dónde queda | Cuánto tiempo |
 |---|---|---|
-| Teléfono | **(1)** El mail (Gmail de RenovArte). **(2)** El mensaje y el adjunto `.txt` en el canal privado de Discord. Nunca en DynamoDB, logs ni respuestas | (1) y (2) **Sin plazo de borrado**: lo que RenovArte conserve en su casilla y en el canal (AC-29 y AC-31 retirados) |
-| Registro de la orden: `numero_orden`, `creado_en`, estado por canal, `mail_message_id`, `discord_message_id`, códigos de falla, líneas (`producto_id`, `cantidad`, `precio_unitario`), total, `payload_hmac` | DynamoDB `IDEM#<key>` | **90 días** por TTL (`expira_en` Number, epoch-segundos) |
+| Nombre y apellido, teléfono | **(1)** El mail (Gmail de RenovArte), solo en el cuerpo. **(2)** El mensaje y el adjunto `.txt` en el canal privado de Discord, solo en el cuerpo. Nunca en DynamoDB, logs ni respuestas (la respuesta `aceptada` no repite el nombre; el cliente lo muestra desde su propio estado) | (1) y (2) **Sin plazo de borrado**: lo que RenovArte conserve en su casilla y en el canal (AC-29 y AC-31 retirados) |
+| Registro de la orden: `numero_orden`, `creado_en`, estado por canal, `mail_message_id`, `discord_message_id`, códigos de falla, líneas (`producto_id`, `cantidad`, `precio_unitario`), total, `payload_hmac` (huella con clave derivada, §5.4.1; no permite reconstruir nombre ni teléfono) | DynamoDB `IDEM#<key>` | **90 días** por TTL (`expira_en` Number, epoch-segundos) |
 | Número de orden reservado | DynamoDB `NUM#RA-xxxxx`, sin datos personales | Sin TTL, para no reusar números (§9) |
 | IP | Solo `HMAC(secreto, ip)` en los contadores de rate limit | TTL de 24 h |
-| Logs | JSON con **allowlist** de campos (`numero_orden`, `resultado`, `codigo`, `canal`, `http_status`, latencias, `idempotency_key`). **Nunca** el body, el contacto, la IP en claro, la URL del webhook ni el **body de respuesta de Discord** (con `?wait=true`, Discord devuelve el mensaje completo, con los datos de contacto) | 14 días en CloudWatch |
+| Logs | JSON con **allowlist** de campos (`numero_orden`, `resultado`, `codigo`, `canal`, `campo` (nombre del campo con error, nunca su valor), `http_status`, latencias, `idempotency_key`). **Nunca** el body, el contacto (**ni el nombre ni el teléfono**, ni su largo ni un fragmento), la IP en claro, la URL del webhook ni el **body de respuesta de Discord** (con `?wait=true`, Discord devuelve el mensaje completo, con el nombre y el teléfono). El logger descarta toda clave fuera de la lista y las excepciones se mapean a códigos, nunca se loguea `error.message` de la validación | 14 días en CloudWatch |
 
 - **Secretos**, en SSM Parameter Store `SecureString` (gratis, clave
   administrada por AWS), leídos en el cold start con dos `GetParameter`
@@ -595,10 +705,12 @@ RenovArte para el MVP).
     indica forzar un cold start (por ejemplo, actualizando una env var
     dummy).
 - **El visitante no recibe ningún mail ni mensaje** (AC-11).
-- **Asunto y primera línea de Discord sin datos personales:** `Nueva orden
-  RA-48271 · $ 64.320 · 3 productos`. Así la notificación push de
-  Discord y la vista previa de Gmail no muestran datos personales en la
-  pantalla bloqueada.
+- **Asunto y primera línea de Discord sin datos personales (ni nombre ni
+  teléfono):** `Nueva orden RA-48271 · $ 64.320 · 3 productos`. Así la
+  notificación push de Discord y el asunto en la bandeja de Gmail no
+  muestran datos personales en la pantalla bloqueada. El nombre va en el
+  cuerpo, **después** de una línea de relleno fija (§9.1) que ocupa el
+  fragmento de vista previa de Gmail (decidido por el owner, riesgo 12).
 - **Configuración del canal de Discord: paso manual del CTO/CEO, no
   código** (decisión 2026-09-30e: "el canal solo lo vamos a ver los
   propietarios"; tarea B24, documentada en el runbook):
@@ -615,13 +727,14 @@ RenovArte para el MVP).
 - **Ley 25.326, a confirmar por el CTO/CEO antes de producción** (no soy
   abogado; decidido que no bloquea el diseño):
   1. **Deber de información (art. 6):** el texto de privacidad del
-     formulario **se retiró** para el MVP (2026-10-05). Es el punto más
-     expuesto si más adelante se piden más datos.
+     formulario **se retiró** para el MVP (2026-10-05; ADR-0020 lo deja
+     como deuda explícita). Con nombre y teléfono sigue siendo el punto
+     más expuesto.
   2. **Registro ante la AAIP (art. 21):** aplica a las bases que forman la
      casilla y **ahora también el canal de Discord**, no a este servicio.
   3. **Transferencia internacional (art. 12):** SES, Gmail **y Discord**
      (Discord Inc., EE.UU.) procesan fuera de Argentina.
-  4. **Supresión:** si un cliente pide borrar su teléfono, los
+  4. **Supresión:** si un cliente pide borrar su nombre y teléfono, los
      propietarios borran a mano el mail y el mensaje de Discord (pueden
      borrar mensajes del canal; el `discord_message_id` está en `IDEM#`
      durante 90 días). No hay borrado automático.
@@ -734,7 +847,7 @@ adjunto (`orden-RA-48271.txt`) muestran el mismo string (AC-10, AC-13).
 ### 9.1 Modelo único de orden
 
 Los dos canales se renderizan desde **un mismo objeto inmutable**,
-`OrdenParaEntrega`: número, fecha y hora, contacto validado, líneas con
+`OrdenParaEntrega`: número, fecha y hora, contacto validado (nombre normalizado, §3.2.1, y teléfono), líneas con
 nombre y presentación **tomados del catálogo**, cantidad, precio unitario,
 subtotal y total. Se construye con un builder de allowlist, nunca con un
 spread del `Product` del catálogo.
@@ -748,11 +861,31 @@ spread del `Product` del catálogo.
   el mismo total y las mismas líneas, y que ninguna contiene tokens
   prohibidos (AC-16).
 
-**Contenido del mail (sin cambios):**
+**Contenido del mail** (rev. 4: suma el nombre en el cuerpo; el asunto no cambia):
 
 - **Asunto:** `Nueva orden RA-48271 · $ 64.320 · 3 productos`.
-- **Cuerpo** (texto plano + HTML simple): número; fecha y hora en
-  `America/Argentina/Buenos_Aires`; teléfono del visitante; tabla de productos (nombre, presentación,
+- **Línea de relleno fija (decisión del owner, 2026-10-05b):** el cuerpo
+  empieza, en el texto plano y en el HTML (primer párrafo, visible, sin
+  trucos de preheader oculto), con esta constante exacta, definida una sola
+  vez en `render/text.ts` (`LINEA_RELLENO`):
+
+  > Nueva orden recibida desde el sitio de RenovArte. Abrí el mensaje para
+  > ver el número de orden, los datos de contacto del cliente y los
+  > productos pedidos.
+
+  Tiene 153 caracteres (más que el fragmento de vista previa habitual de
+  Gmail, ~100–140), **no varía por orden** y no lleva ningún dato
+  personal, ni el número de orden ni el total. Como el texto sale de
+  `renderTextoPlano(orden)`, el adjunto `.txt` de Discord también la
+  lleva como primera línea (inofensivo, y mantiene la igualdad de
+  strings con la parte `text/plain` del mail). **Discord no necesita un
+  equivalente:** el `content` empieza con la primera línea sin datos
+  personales (la que muestra la notificación push) y los datos de
+  contacto van después, dentro del bloque de código.
+- **Cuerpo** (texto plano + HTML simple), en este orden: línea de relleno;
+  número; fecha y
+  hora en `America/Argentina/Buenos_Aires`; **"Nombre y apellido:
+  {nombre}"** y **"Teléfono: {teléfono}"** (una línea cada uno); tabla de productos (nombre, presentación,
   cantidad, unitario, subtotal); total; pie "Pago y envío a coordinar con
   el cliente. Orden generada desde el sitio."
 - Pesos con formato `$ 64.320`. En la parte HTML, todo el texto se
@@ -830,6 +963,7 @@ envío es atómico):
   Recibida el 30/09/2026 a las 14:32 (hora de Argentina)
   ```
   CONTACTO
+  Nombre:     Ana Pérez
   Teléfono:   11 5555 5555
 
   PRODUCTOS
@@ -842,15 +976,16 @@ envío es atómico):
   Pago y envío a coordinar con el cliente. Detalle completo en el adjunto.
   ````
 
-- **Todo el texto del visitante y del catálogo va dentro del bloque de
-  código.** Ahí Discord no interpreta markdown, links ni menciones. Lo
+- **Todo el texto del visitante (nombre y teléfono) y del catálogo va
+  dentro del bloque de código.** Ahí Discord no interpreta markdown, links ni menciones. Lo
   único que puede romper el bloque es una comilla invertida, así que el
   render reemplaza cada `` ` `` por `ˋ` (U+02CB). CR/LF y caracteres de
   control ya los rechaza la validación (§3.2). La primera línea, fuera
   del bloque, solo tiene datos generados por el servidor.
-- **Presupuesto de caracteres:** encabezado + contacto ocupan ≤ ~300
-  caracteres en el peor caso (el teléfono tiene ≤ 40 caracteres con sus
-  separadores). Las líneas de producto se agregan en orden mientras el
+- **Presupuesto de caracteres:** encabezado + contacto ocupan ≤ ~400
+  caracteres en el peor caso (el nombre tiene ≤ 80 caracteres, §3.2.1, y
+  el teléfono ≤ 40 con sus separadores; el servidor cuenta puntos de
+  código, y Discord cuenta caracteres, así que no hay desfase). Las líneas de producto se agregan en orden mientras el
   total quede ≤ 1.900; si no entran todas, se cierra con `… y N
   productos más: ver el adjunto`. El total siempre se muestra.
 - **Adjunto `orden-RA-48271.txt`, siempre:** es `renderTextoPlano(orden)`,
@@ -898,8 +1033,9 @@ un mensaje del canal; el `discord_message_id` queda 90 días en `IDEM#`.
 3. Registro seudonimizado: **90 días**.
 4. Alarma de flood → kill-switch con motivo `flood`; reactivación manual
    o el día 1.
-5. Q-F5: el teléfono en `sessionStorage` del lado del cliente, aprobado
-   (hasta la revisión 2 eran email y teléfono). No afecta al contrato.
+5. Q-F5: el nombre y el teléfono en `sessionStorage` del lado del cliente,
+   aprobado (hasta la revisión 2 eran email y teléfono; revisión 3: solo el
+   teléfono). No afecta al contrato.
 6. Q-F1: **máximo 100 líneas** por orden.
 7. Ley 25.326: no bloquea el diseño; se resuelve antes de producción.
 8. **Doble canal** mail + Discord, con la orden completa y los datos de
@@ -909,9 +1045,15 @@ un mensaje del canal; el `discord_message_id` queda 90 días en `IDEM#`.
 10. ~~Borrado automático de los mensajes de Discord a los 60 días~~
     (AC-29) — **retirado el 2026-10-05**. Se mantiene el **canal visible
     solo para los propietarios** (paso manual de configuración).
-11. **Recorte de datos del MVP (2026-10-05):** el formulario pide solo el
-    teléfono; RenovArte comparte el suyo (1130579528); sin aviso de
-    privacidad ni borrado a 60 días.
+11. **Recorte de datos del MVP (2026-10-05):** RenovArte comparte su
+    teléfono (1130579528); sin aviso de privacidad ni borrado a 60 días.
+    *(La parte "el formulario pide solo el teléfono" fue modificada por el
+    punto 12.)*
+12. **Nombre y apellido (2026-10-05b, ADR-0020):** el formulario pide dos
+    campos obligatorios, "Nombre y apellido" (un solo campo, 2 a 80
+    caracteres, al menos una letra, sin exigir más de una palabra) y
+    teléfono. El nombre va en el cuerpo del mail y de Discord; el asunto y
+    la primera línea siguen sin datos personales.
 
 **Pendientes (no bloquean el diseño):**
 
@@ -936,8 +1078,8 @@ un mensaje del canal; el `discord_message_id` queda 90 días en `IDEM#`.
    `check:leak`, logs sin URL y runbook de rotación (borrar y recrear el
    webhook y actualizar SSM). No expone los mensajes existentes.
 4. **Datos personales en Discord** (§7): más superficie para la Ley
-   25.326 (art. 12 y art. 21). Desde la revisión 3 el dato es solo el
-   teléfono y **no hay borrado automático**; riesgo aceptado por RenovArte
+   25.326 (art. 12 y art. 21). Desde la revisión 4 los datos son el
+   nombre y apellido y el teléfono (ADR-0020) y **no hay borrado automático**; riesgo aceptado por RenovArte
    para el MVP. Mitigan el canal solo para propietarios y 2FA.
 5. ~~El job de borrado falla varios días seguidos~~ — retirado con el
    borrado automático (revisión 3).
@@ -954,6 +1096,16 @@ un mensaje del canal; el `discord_message_id` queda 90 días en `IDEM#`.
    flood y la reserved concurrency.
 11. **Deriva de precios entre build y caché** (§4.2): cubierta por el
     refresco forzado ante discrepancia.
+12. **Vista previa de Gmail** (rev. 4): **decidido por el owner**
+    (2026-10-05b): el cuerpo empieza con la línea de relleno fija de §9.1,
+    para que el fragmento de vista previa no muestre el nombre ni el
+    teléfono. Riesgo residual: si Gmail mostrara un fragmento más largo que
+    153 caracteres, el número y la fecha (sin datos personales) quedan
+    entre el relleno y el nombre, lo que da margen adicional.
+13. **Nombres con caracteres raros** (rev. 4): se aceptan a propósito (emoji,
+    marcas combinantes, escrituras no latinas) y se escapan por destino
+    (§3.2.1); el costo es que un nombre ruidoso se vea feo en el mail, no
+    que rompa un canal.
 
 ## 13. Respuesta a las divergencias de `devops-agent`
 
@@ -982,6 +1134,10 @@ un mensaje del canal; el `discord_message_id` queda 90 días en `IDEM#`.
   que hay lugar para 2 alarmas).
 - Runbook de infra: cargar y rotar el webhook de Discord en SSM y forzar
   un cold start.
+- **Revisión 4:** sin cambios de infraestructura. El nombre no agrega env
+  vars, parámetros SSM, permisos IAM ni alarmas; el HMAC derivado usa el
+  mismo secreto (§5.4.1). Los metric filters de §5.5 no dependen del
+  nombre.
 - **Revisión 3:** ya **no** se crea el Lambda `discord-retention`, ni su
   schedule, ni su IAM, ni sus 2 alarmas. El rol de deploy por OIDC (I11)
   no necesita un tercer ARN.

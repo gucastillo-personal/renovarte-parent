@@ -2,14 +2,16 @@
 
 **Mockup:** https://claude.ai/artifact/AUebBaKqEXBV3xsJwDgiFL
 
-> **Enmienda 2026-10-05 (recorte de datos del MVP):** el formulario pide
-> **solo teléfono** y la confirmación, los banners y los `noscript` muestran
-> el **teléfono de RenovArte (1130579528)**. Se retira el aviso de
-> privacidad. El mockup de arriba **todavía muestra el formulario anterior**
-> (nombre, email/teléfono, dirección, localidad) y hay que actualizarlo;
-> donde este documento y el mockup difieran, rige este documento. El copy
-> nuevo de esta enmienda es propuesta, sujeta a aprobación del CTO/CEO
-> como todo copy nuevo.
+> **Enmienda 2026-10-05 (recorte de datos del MVP, ADR-0020):** el
+> formulario pide **dos campos obligatorios: "Nombre y apellido" (un solo
+> input) y teléfono**, en ese orden. Ya no hay email, dirección ni
+> localidad. La confirmación, los banners y los `noscript` muestran el
+> **teléfono de RenovArte (1130579528)**. Se retira el aviso de privacidad.
+> El mockup de arriba **todavía muestra el formulario anterior**
+> (nombre, email/teléfono, dirección, localidad) y no se actualizó en esta
+> revisión; donde este documento y el mockup difieran, rige este documento.
+> El copy nuevo de esta enmienda es propuesta, sujeta a aprobación del
+> CTO/CEO como todo copy nuevo.
 
 Prototipo de revisión operable (no es la implementación): ficha, grilla, chat
 con combos, carrito, formulario, confirmación y estados de error, en ancho
@@ -39,8 +41,8 @@ que poder servir (sección al final).
   visitante busca. El sticky es lo que hace cumplir el "en todo momento" de
   AC-2: en móvil, la grilla es larga y un header no sticky desaparece a los
   dos scrolls, junto con el contador.
-- **El formulario vive en la misma página que el carrito** (sin paso
-  intermedio "Continuar"). En móvil va debajo de las líneas y el total; en
+- **El formulario (nombre y apellido + teléfono) vive en la misma página
+  que el carrito** (sin paso intermedio "Continuar"). En móvil va debajo de las líneas y el total; en
   escritorio va en una columna derecha sticky. Un paso menos, y quien
   edita cantidades ve el total al lado de lo que va a enviar.
 - **Pregunta abierta #4 (agregar desde la card de la grilla): no, en esta
@@ -254,6 +256,10 @@ Ruta estática nueva, `<title>` "Tu carrito — RenovArte". `noindex` sugerido
 Izquierda: `h1`, aviso, líneas, deshacer/vaciar y "Seguir comprando".
 Derecha: la caja de resumen y el formulario, `sticky top-[88px]` (debajo del
 header sticky). El total queda a la vista mientras se edita cualquier línea.
+Con el campo de nombre la columna es ~90px más alta: el `sticky` aplica solo
+si la ventana tiene alto suficiente (`@media (min-height: 760px)`); en
+ventanas más bajas la columna fluye normal, para que el botón "Enviar orden"
+nunca quede fuera de alcance.
 
 **Carrito vacío (AC-8):** en lugar de líneas y formulario, un bloque con el
 mismo tratamiento de "sin resultados" de la búsqueda (`border-dashed
@@ -268,18 +274,29 @@ catálogo."
 
 ### Formulario "Tus datos"
 
-- `h2` "Tu teléfono" (Cormorant) + bajada: "Es el único dato que
-  necesitamos. Te llamamos o te escribimos para coordinar el pago y el
-  envío." *(2026-10-05; antes "Tus datos")*
-- Un solo campo (label visible arriba, nunca solo placeholder). Sin
-  `fieldset`/`legend`, porque ya no hay grupo:
+- `h2` "Tus datos" (Cormorant) + bajada: "Solo necesitamos tu nombre y tu
+  teléfono. Te llamamos o te escribimos para coordinar el pago y el envío."
+  *(2026-10-05, ADR-0020)*
+- Dos campos obligatorios, en este orden (el nombre primero: es lo que se
+  dice al saludar, y el teléfono queda pegado al botón de envío). Label
+  visible arriba, nunca solo placeholder, y **sin placeholder** (el hint
+  visible ya muestra el ejemplo). Sin `fieldset`/`legend`: son dos campos
+  sueltos y el `h2` ya los titula:
 
-| Campo | Tipo / atributos | Hint visible |
-|---|---|---|
-| Teléfono | `tel`, `autocomplete="tel"`, `inputmode="tel"` | "Con código de área. Ej.: 11 5555 5555" |
+| # | Campo (label) | Tipo / atributos | Hint visible |
+|---|---|---|---|
+| 1 | Nombre y apellido | `type="text"`, `name="nombre"`, `autocomplete="name"`, `autocapitalize="words"`, `spellcheck="false"`, `enterkeyhint="next"`, `maxlength="80"` | "Para saber a quién llamar. Ej.: Ana Pérez" |
+| 2 | Teléfono | `type="tel"`, `name="telefono"`, `autocomplete="tel"`, `inputmode="tel"`, `enterkeyhint="done"` | "Con código de área. Ej.: 11 5555 5555" |
 
+- **Teclado móvil:** el nombre abre el teclado de texto con mayúscula
+  inicial por palabra; el teléfono abre el teclado numérico/telefónico. Un
+  solo campo de nombre es una decisión del owner por rapidez: no se parte
+  en nombre y apellido separados ni se exige "dos palabras" (ver #J).
 - Inputs: `rounded-lg border border-beige-300 bg-beige-50 px-3 py-2.5
-  text-base` (16px, para que iOS no haga zoom al enfocar).
+  text-base` (16px, para que iOS no haga zoom al enfocar), ancho completo,
+  separados por `gap-4`. Un asterisco no reemplaza a la palabra: ambos son
+  obligatorios y el bloque lo dice una vez en la bajada ("Solo necesitamos…"),
+  sin marcar "(opcional)" en ningún campo porque no hay opcionales.
 - **Sin aviso de privacidad** *(retirado 2026-10-05, pregunta #9)*. Tampoco
   hay checkbox de consentimiento.
 - No hay campos de pago, envío, cupón ni comentario (AC-12, Alcance/Out).
@@ -290,22 +307,36 @@ catálogo."
   intento fallido, cada campo se revalida al salir de él (blur), y su error
   desaparece apenas se corrige.
 - Reglas (el cliente solo ayuda; el repo de órdenes vuelve a validar):
-  el teléfono es obligatorio y tiene de 8 a 15 dígitos, y acepta espacios,
-  guiones, paréntesis y `+`. Se ignoran los espacios al principio y al
-  final.
+  - **Nombre y apellido:** obligatorio; tras recortar espacios al principio
+    y al final, de 2 a 80 caracteres y con al menos una letra (cualquier
+    alfabeto, con tildes, `ñ`, apóstrofos y guiones). No se exige más de
+    una palabra.
+  - **Teléfono:** obligatorio, de 8 a 15 dígitos; acepta espacios, guiones,
+    paréntesis y `+`. Se ignoran los espacios al principio y al final.
+  - Un nombre vacío o de solo espacios cuenta como vacío (primer error).
 - Al fallar: arriba del formulario aparece un **resumen de errores** ("Revisá
-  estos datos antes de enviar:" y una lista donde cada ítem lleva al campo),
-  y el foco va a ese resumen. Además, cada campo con error muestra el
-  mensaje debajo, con ícono y `font-semibold`, y el input pasa a borde de
-  2px `sage-800` con `aria-invalid="true"`.
+  estos datos antes de enviar:" y una lista con un ítem por campo con error,
+  en el orden del formulario, donde cada ítem lleva al campo), y el foco va
+  a ese resumen. Si hay un solo error, el resumen igual aparece (mismo
+  patrón siempre). Además, cada campo con error muestra el mensaje debajo,
+  con ícono y `font-semibold`, y el input pasa a borde de 2px `sage-800`
+  con `aria-invalid="true"`.
 - Copy de errores (qué pasó y cómo se arregla):
-  - "Dejanos un teléfono para contactarte."
-  - "Revisá el teléfono: escribilo con código de área, solo números (ej.: 11 5555 5555)."
-- Los datos del formulario **no** se guardan en el navegador entre visitas
-  (solo el carrito persiste). Sí sobreviven dentro de la página a cualquier
-  error de envío y a cualquier edición del carrito. Motivo: RNF-12 / AC-18,
-  para que no queden datos personales guardados en un dispositivo
-  compartido sin que el visitante lo sepa.
+  - Nombre vacío: "Dejanos tu nombre y apellido para saber a quién llamar."
+  - Nombre inválido (sin letras, o más de 80 caracteres): "Revisá el nombre:
+    escribilo con letras y hasta 80 caracteres (ej.: Ana Pérez)."
+  - Teléfono vacío: "Dejanos un teléfono para contactarte."
+  - Teléfono inválido: "Revisá el teléfono: escribilo con código de área, solo números (ej.: 11 5555 5555)."
+- **Qué se guarda en el navegador:** el carrito sigue en `localStorage`. El
+  **nombre y apellido y el teléfono** se guardan **solo en `sessionStorage`
+  de la pestaña** (ADR-0020; AC-28): sobreviven a una recarga, a un error de
+  envío y a editar el carrito, y se pierden al cerrar la pestaña. Nunca en
+  `localStorage`, nunca entre visitas (RNF-12 / AC-18: no dejar datos
+  personales en un dispositivo compartido sin que el visitante lo sepa).
+  Se guardan al salir de cada campo (blur) y al enviar, no en cada tecla. Al
+  confirmarse la orden, el formulario se vacía; lo único de contacto que
+  queda en `sessionStorage` es lo que la confirmación necesita para
+  mostrarse tras una recarga (nombre y teléfono), hasta cerrar la pestaña.
 
 ## Interacción
 
@@ -365,7 +396,7 @@ publicado (`products.json` del build vigente):
 
 1. "Enviar orden" → validación (arriba). Si pasa:
 2. **Enviando:** el botón muestra "Enviando orden…" con `aria-disabled`,
-   los inputs pasan a `readonly` y el stepper, "Quitar" y "Vaciar" se
+   los dos inputs (nombre y teléfono) pasan a `readonly` y el stepper, "Quitar" y "Vaciar" se
    deshabilitan. Así lo que se envía es exactamente lo que se ve (AC-13).
    Debajo: "Estamos enviando tu orden a RenovArte. No cierres esta
    página." Anuncio: "Enviando tu orden…". Un segundo toque no reenvía.
@@ -391,9 +422,11 @@ el contador del header desaparece. Columna única centrada (`max-w-2xl`):
    por 1,6 s; si el portapapeles falla, se selecciona el texto). Debajo:
    **"Guardalo o sacale una captura: no te vamos a mandar la orden por
    mail."**
-3. `h2` "Qué sigue": "RenovArte te va a contactar al {teléfono} para
-   coordinar el pago y el envío. En el sitio no se cobra nada." *(2026-10-05:
-   solo teléfono)*
+3. `h2` "Qué sigue": "RenovArte va a contactar a {nombre y apellido} al
+   {teléfono} para coordinar el pago y el envío. En el sitio no se cobra
+   nada." *(2026-10-05, ADR-0020: nombre y teléfono)*. El nombre se
+   muestra como texto plano (escapado); si el visitante lo escribió largo,
+   el texto corta línea sin desbordar (`break-words`).
 4. `h2` "¿Tenés una consulta sobre tu orden?": Teléfono de RenovArte
    **1130579528** (link `tel:` + botón "Copiar"; *pendiente:* si RenovArte
    confirma que es WhatsApp, se suma un link a `wa.me` con el número en
@@ -471,7 +504,10 @@ catálogo sigue 100% funcional sin JS (AC-21). Mismo patrón
     Instagram:" y los canales (teléfono 1130579528 + Copiar, email +
     Copiar, Instagram MD).
   - Botón **"Copiar detalle del pedido"**: copia un texto plano ("Pedido
-    RenovArte / - {nombre} ({presentación}) x{N}: $ X / Total: $ Y"). Si el
+    RenovArte / - {nombre} ({presentación}) x{N}: $ X / Total: $ Y"). No
+    incluye el nombre ni el teléfono del visitante (quien lo pega en un
+    mensaje ya se identifica; así el texto copiado no lleva datos
+    personales al portapapeles). Si el
     portapapeles falla, muestra el texto en un `textarea` de solo lectura
     ya seleccionado.
 - `role="alert"` y el foco va al banner: es el resultado directo de la
@@ -549,9 +585,13 @@ tocó "Enviar", o alguien manipuló el navegador.
   "Deshacer"; "Vaciar" → "Cancelar"; error de validación → resumen; falla
   de envío → banner; confirmación → `h1`; "Ver carrito" desde el chat →
   `h1` del carrito.
-- **Formulario:** `<label for>` visible en cada campo; los hints y los
-  errores se asocian con `aria-describedby`; `aria-invalid` en los campos
-  con error; el `autocomplete` de la tabla. `novalidate` en el `<form>` (los mensajes son
+- **Formulario:** `<label for>` visible en cada campo ("Nombre y apellido",
+  "Teléfono"); los hints y los errores se asocian con `aria-describedby`
+  (hint y error, en ese orden); `aria-invalid` en los campos con error;
+  `autocomplete="name"` y `autocomplete="tel"` (WCAG 1.3.5, propósito del
+  campo). Orden de foco = orden visual: … "Vaciar" → nombre → teléfono →
+  "Enviar orden". Enter en el teléfono envía el formulario; Enter en el
+  nombre pasa al teléfono (no envía). `novalidate` en el `<form>` (los mensajes son
   los nuestros, no los del navegador). El resumen de errores es un
   contenedor con `tabindex="-1"`, etiquetado por su título, y cada ítem es
   un botón que enfoca el campo.
@@ -571,7 +611,7 @@ tocó "Enviar", o alguien manipuló el navegador.
 | Elemento en pantalla | Fuente |
 |---|---|
 | Nombre, presentación y precio en el carrito, la confirmación y el detalle copiado | `products.json` vigente (`nombre`, `presentacion`, `precio_venta`), nunca texto libre (AC-1, AC-6, AC-15) |
-| Campo obligatorio: solo teléfono | Alcance y AC-9 (enmienda 2026-10-05) |
+| Campos obligatorios: "Nombre y apellido" y teléfono | ADR-0020 (2026-10-05). `spec.md` (precisión 2026-10-05b, AC-9) ya está alineada |
 | ~~Aviso de privacidad~~ | Retirado 2026-10-05 (pregunta #9) |
 | Número de orden, aclaración de que pago y envío se coordinan después, canales de consulta | AC-10 |
 | Teléfono 1130579528, renovartebyjuli@gmail.com e Instagram como canales visibles | Pregunta #3 (resuelta 2026-10-05) |
@@ -670,6 +710,19 @@ Ninguna bloquea la Fase 3; todas tienen un default aplicado en el mockup.
   alfabeto sin 0/O/1/I/L), fácil de dictar por teléfono o escribir en un
   MD. El mockup usa `RA-48271` como ejemplo. La generación la decide la
   Fase 3.
+- **#J — Nombre y apellido en un solo campo (ADR-0020).** Aplicado como
+  decidió el owner. Consecuencias que conviene aceptar: (1) no se puede
+  garantizar que haya apellido, así que la validación solo exige 2
+  caracteres con una letra (default; la alternativa es exigir 2 palabras,
+  que rechaza nombres de una sola palabra); (2) el nombre se muestra tal
+  cual en la confirmación, sin saludar solo por el nombre de pila porque no
+  se puede separar; (3) tope de 80 caracteres propuesto, hay que
+  coordinarlo con el límite del repo de órdenes (la validación servidor
+  tiene que coincidir). ¿Conformes?
+- **#K — Copia del pedido sin datos personales.** "Copiar detalle del
+  pedido" no incluye nombre ni teléfono (ver Estados). Si RenovArte prefiere
+  que los incluya para pegarlo directo en un mensaje, es un cambio de una
+  línea. Default: no los incluye.
 - **#I — Pregunta #5 (combo agrupado o aplanado):** apliqué el default,
   aplanado. El carrito lista productos individuales y no recuerda de qué
   combo vinieron. Agregar dos combos que comparten un producto suma esa
