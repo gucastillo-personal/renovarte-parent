@@ -63,8 +63,8 @@ implementación del frontend recién iniciada (F1). *(Equivale a
 > momento **solo se pide el número de teléfono** del visitante, y
 > **RenovArte comparte el suyo** para coordinar el pago y el envío; en este
 > MVP no se prioriza la protección de datos personales, así que se acordó
-> **pedir menos datos**. Teléfono de RenovArte: **1130579528** (se asume
-> que sirve para llamada y WhatsApp; a confirmar con RenovArte).
+> **pedir menos datos**. Teléfono de RenovArte: **1130579528** (el CTO/CEO
+> confirmó el 2026-10-07 que sirve para llamada y WhatsApp).
 >
 > Interpretación registrada (reflejada en Alcance, Out, Contexto, AC-9,
 > AC-10, AC-13, AC-18, AC-22, AC-23, AC-28 y Preguntas abiertas):
@@ -671,8 +671,8 @@ envío por fuera del sitio.
   alternativa.
 - ~~#9 — aviso de privacidad~~ y ~~#12(a)~~ → **retirados** para el MVP.
 - ~~AC-29 y AC-31 (borrado a 60 días)~~ → **retirados**.
-- **Abierto, no bloqueante:** confirmar con RenovArte que 1130579528 sirve
-  para llamada y WhatsApp (se asumió que sí).
+- ~~Confirmar que 1130579528 sirve para llamada y WhatsApp~~ → **resuelta
+  2026-10-07**: el CTO/CEO confirmó que sirve para las dos.
 
 ### Resueltas por el CTO/CEO (2026-10-05b, ADR-0020)
 

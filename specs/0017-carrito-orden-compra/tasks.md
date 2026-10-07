@@ -389,8 +389,9 @@ Reglas:
   - Constantes de email e Instagram, y los helpers `mailtoConsulta(numero)`
     e `INSTAGRAM_DM_URL`.
   - **Enmienda 2026-10-05:** suma `RENOVARTE_TELEFONO` (`1130579528`) y
-    `telefonoHref()` (`tel:`), con su test. *Pendiente:* link a WhatsApp
-    si RenovArte confirma que es WhatsApp. (F1 ya estaba commiteada con
+    `telefonoHref()` (`tel:`), con su test. El 2026-10-07 el CTO/CEO confirmó que es WhatsApp: suma
+    `whatsappHref()` (`wa.me` con el número en formato internacional), con
+    su test, para el link de `ux.md` (consulta de la confirmación). (F1 ya estaba commiteada con
     email e Instagram; el teléfono entra en un commit aparte.)
   - `tests/unit/no-runtime-backend.test.ts`: falla si aparece bajo `src/`
     un `route.(ts|js)`, un `middleware.*`/`proxy.*` o `"use server"`.
@@ -773,7 +774,12 @@ en vivo con el CTO/CEO.
     `aws cloudwatch list-metrics --namespace` de namespaces propios →
     **≤ 7 custom metrics** (hacen falta 3).
   - `terraform version` local ≥ 1.11 (por `value_wo`, I-D9).
-  - Free tier de 12 meses de la cuenta (lo mismo que en la 0016).
+  - Free tier de 12 meses de la cuenta (lo mismo que en la 0016): el
+    CTO/CEO confirmó el 2026-10-07 que **vence el 2027-03-16**. Después
+    de esa fecha, el gasto esperado sigue < USD 0,10/mes (Lambda y
+    DynamoDB tienen cuota gratis permanente) y el peor caso de
+    CloudWatch del `plan.md` suma ~USD 1,30/mes, muy por debajo del tope
+    de USD 20 (RNF-14).
 - [ ] **I2 — Bootstrap IAM y OIDC** (manual del CTO/CEO en consola/CLI,
   con aprobación). `devops-agent` escribe `terraform/iam-bootstrap-policy.json`,
   gitignoreado igual que en la 0016. La policy va acotada al prefijo
