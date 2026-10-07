@@ -13,3 +13,6 @@
 [submodule "renovarte-chat-gateway"]
 	path = renovarte-chat-gateway
 	url = https://github.com/gucastillo-personal/renovarte-chat-gateway.git
+[submodule "renovarte-ordenes"]
+	path = renovarte-ordenes
+	url = https://github.com/gucastillo-personal/renovarte-ordenes.git

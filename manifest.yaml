@@ -112,7 +112,7 @@ repositories:
     foundational_decisions: [ADR-0004, ADR-0005, ADR-0011, ADR-0012, ADR-0013, ADR-0014, ADR-0015]
 
   renovarte-ordenes:
-    path: renovarte-ordenes       # todavía no es submódulo (spec 0017, Fase 4)
+    path: renovarte-ordenes       # submódulo desde 2026-10-07 (spec 0017, Fase 4)
     status: planned
     type: api-service
     responsibility: >-
