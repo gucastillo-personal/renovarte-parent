@@ -10,6 +10,8 @@
 > El mockup de arriba **todavía muestra el formulario anterior**
 > (nombre, email/teléfono, dirección, localidad) y no se actualizó en esta
 > revisión; donde este documento y el mockup difieran, rige este documento.
+> **Decisión del CTO/CEO (2026-10-07):** el mockup no se actualiza; se
+> retoma si más adelante se vuelve sobre este diseño.
 > El copy nuevo de esta enmienda es propuesta, sujeta a aprobación del
 > CTO/CEO como todo copy nuevo.
 
@@ -428,9 +430,9 @@ el contador del header desaparece. Columna única centrada (`max-w-2xl`):
    muestra como texto plano (escapado); si el visitante lo escribió largo,
    el texto corta línea sin desbordar (`break-words`).
 4. `h2` "¿Tenés una consulta sobre tu orden?": Teléfono de RenovArte
-   **1130579528** (link `tel:` + botón "Copiar"; *pendiente:* si RenovArte
-   confirma que es WhatsApp, se suma un link a `wa.me` con el número en
-   formato internacional), Email
+   **1130579528** (link `tel:` + botón "Copiar"; *confirmado el 2026-10-07:* es
+   WhatsApp, así que se suma un link a `wa.me` con el número en formato
+   internacional), Email
    **renovartebyjuli@gmail.com** (link `mailto:` con asunto
    "Consulta por orden {número}" + botón "Copiar", porque `mailto:` no
    funciona en todos los dispositivos) e Instagram, por mensaje directo,

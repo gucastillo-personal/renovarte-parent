@@ -137,3 +137,5 @@ RFC. Requiere un ADR nuevo que supersede a este.
 ## Notas posteriores
 
 <!-- Append-only. -->
+
+- 2026-10-07 — El CTO/CEO confirmó que el teléfono de RenovArte (1130579528) sirve para llamada y WhatsApp; el riesgo "el teléfono no sirve para WhatsApp" queda cerrado. No cambia la decisión.
