@@ -750,8 +750,10 @@ Budgets (8 a 24 h) obliga a varias capas.
 
 A una escala generosa de 300 órdenes y ~5.000 requests por mes:
 
-- **SES:** USD 0,10 / 1.000 mails → USD 0,03 (free tier de 3.000/mes los
-  primeros 12 meses).
+- **SES:** USD 0,10 / 1.000 mails → USD 0,03. *(B1, 2026-10-07: la página
+  actual de SES ya no ofrece 3.000 mails/mes por 12 meses, sino hasta USD
+  200 en créditos por 6 meses para cuentas nuevas; con USD 0,03 de gasto
+  el efecto es nulo.)*
 - **Discord:** USD 0. El egress de AWS a internet es de ~2–20 KB por
   mensaje; incluso 1.000 órdenes/mes son < 20 MB, dentro de los 100 GB
   mensuales gratis de transferencia saliente. La invocación no dura más,
@@ -937,16 +939,17 @@ acepta un `nonce` ni una idempotency key, a diferencia del endpoint de
 mensajes de bots. Por eso la idempotencia es propia (§5): un timeout es
 `incierto` y no se reenvía nunca.
 
-**Límites de Discord** (sin verificar hoy; B1):
+**Límites de Discord** (B1, verificado el 2026-10-07 contra docs.discord.com; lo que no pudo verificarse está marcado):
 
 | Límite | Valor | Cómo se respeta |
 |---|---|---|
 | `content` | 2.000 caracteres | El render corta con presupuesto de caracteres (ver formato) |
 | Embeds | 10 por mensaje, 6.000 caracteres en total, 25 campos | **No se usan embeds:** 100 líneas no entran (~110 caracteres por línea ≈ 11.000). El texto plano es más legible en el celular y más simple de testear |
-| Adjuntos | Hasta ~10 MB por archivo sin boost | El `.txt` de una orden de 100 líneas pesa ~15 KB |
-| Rate limit por webhook | ~5 requests cada 2 s, y ~30 mensajes por minuto por canal | Holgado: 50 órdenes/día de cupo global, 3/hora por IP y concurrency 5 |
-| 429 | Header `Retry-After` y `retry_after` en el body | Si `retry_after ≤ 1,5 s` y al Lambda le quedan > 6 s: se espera y se reintenta **una vez** (seguro, porque un 429 no se procesa). Si no: `fallido`, reintentable con la misma key |
+| Adjuntos | 20 MiB por archivo por defecto *(B1; antes ~10 MB)* | El `.txt` de una orden de 100 líneas pesa ~15 KB |
+| Rate limit por webhook | ~5 requests cada 2 s, y ~30 mensajes por minuto por canal *(sin verificar: la documentación no publica estos valores)* | Holgado: 50 órdenes/día de cupo global, 3/hora por IP y concurrency 5 |
+| 429 | `retry_after` (segundos, decimal) y `global` en el body, y headers `X-RateLimit-*` *(B1; el header `Retry-After` no se pudo confirmar: usar el body)* | Si `retry_after ≤ 1,5 s` y al Lambda le quedan > 6 s: se espera y se reintenta **una vez** (seguro, porque un 429 no se procesa). Si no: `fallido`, reintentable con la misma key |
 | Requests inválidas | ~10.000 cada 10 min → bloqueo temporal por IP en Cloudflare | Imposible a este volumen; no hay bucles de reintento. Un 401/404 por webhook borrado deja `fallido` y alerta, pero no reintenta solo |
+| `User-Agent` *(B1, nuevo)* | La documentación exige un `User-Agent` válido en las llamadas HTTP (sin él, errores de Cloudflare) | El cliente de `fetch` fija `User-Agent: DiscordBot (https://github.com/gucastillo-personal/renovarte-ordenes, 0.1.0)` en el envío y en el borrado |
 
 **Formato del mensaje** (una sola request = un solo mensaje, así que el
 envío es atómico):
