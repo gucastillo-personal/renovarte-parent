@@ -120,7 +120,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
     U+2066–U+2069). Las claves `email`, `direccion` y `localidad` dentro
     de `contacto` → `no_permitido` (esquema estricto); `contacto.nombre`
     **ya no** está entre las claves prohibidas.
-  - Líneas: **1..100**, `producto_id` sin repetir, cantidad entera 1..20,
+  - Líneas: **1..100**, `producto_id` sin repetir, cantidad entera 1..10 (tope bajado de 20 a 10, 2026-10-08),
     precios enteros ≥ 0.
   - Tests por campo (AC-9, AC-17): tabla de vectores del nombre del
     `plan.md` (80/81, 1/2 caracteres, una palabra, alfabetos no latinos,
@@ -368,11 +368,9 @@ Reglas:
 - Orden pensado para que `pnpm gate` quede verde después de cada tarea:
   toda UI nueva llega con su test, y el servicio de órdenes se mockea
   hasta F20.
-- **Dependencia de `ux-agent` (Q-F2):** F7, F9, F12, F14 (y el caso de
-  tope de F17) no construyen su parte visible afectada hasta tener la
-  respuesta de `ux-agent`
-  aprobada por un humano. La lógica pura de esas tareas sí puede
-  avanzar.
+- **Q-F2 cerrada (2026-10-08):** (a)-(d) aprobadas por el owner; el copy
+  y las ubicaciones están en `ux.md` (enmienda 2026-10-08). F7, F9, F12,
+  F14 y el caso de tope de F17 ya no esperan a `ux-agent`.
 
 ### Estimate
 
@@ -411,9 +409,10 @@ Reglas:
   - ✔ Test en verde; cuando cierre B3, el diff contra el `src/wire.ts` de
     `renovarte-ordenes` queda vacío salvo el comentario de cabecera.
 - [ ] **F3 — `src/lib/cart/model.ts`.**
-  - Operaciones puras con `MAX_POR_LINEA = 20`; `addProduct`/`addCombo`
-    topean en 20 y devuelven un flag `topeado` (cómo se muestra lo decide
-    Q-F2c). **Sin tope de líneas** en el cliente (Q-F1 cerrada).
+  - Operaciones puras con `MAX_POR_LINEA = 10`; `addProduct`/`addCombo`
+    topean en 10 y devuelven un flag `topeado` **con el detalle** (k
+    productos sumados, M topeados) para el copy del combo de `ux.md`
+    (Q-F2c, aprobada). **Sin tope de líneas** en el cliente (Q-F1 cerrada).
   - `tests/unit/cart-model.test.ts` (AC-3, AC-4, AC-6):
     - agregar suma sin duplicar;
     - `addCombo` agrega 1 de cada producto;
@@ -451,8 +450,9 @@ Reglas:
     label "Carrito" desde `sm`.
   - ✔ Test en verde; `catalog.spec.ts` y `chat.spec.ts` siguen verdes
     con el header sticky.
-- [ ] **F7 — `AddToCartButton` en la ficha** (**depende de `ux-agent`**:
-  Q-F2(c), qué se ve al agregar con la línea ya en 20).
+- [ ] **F7 — `AddToCartButton` en la ficha** (copy y
+  ubicación de "línea ya en 10" según `ux.md`, enmienda 2026-10-08,
+  Q-F2(c)).
   - Botón inerte antes de hidratar, línea de estado, anuncio, foco que
     queda en el botón y `<noscript>`; sin `ul > li`.
   - `tests/unit/add-to-cart-button.test.tsx`.
@@ -478,11 +478,11 @@ Reglas:
     - recarga y navegación conservan el carrito (AC-5);
     - `aria-current` en el header.
   - ✔ Tests en verde; `pnpm build` lista `/carrito` como estática.
-- [ ] **F9 — Edición del carrito** (**depende de `ux-agent`**: Q-F2(d),
-  ubicación y copy de la nota de #D).
+- [ ] **F9 — Edición del carrito** (nota de #D según `ux.md`,
+  enmienda 2026-10-08, Q-F2(d)).
   - `QuantityStepper`, `CartUndoRow` y `CartClearControl`, con las reglas
     de foco de ux.md y los anuncios.
-  - e2e AC-3: +/−, "−" deshabilitado en 1, "+" en 20 con traspaso de
+  - e2e AC-3: +/−, "−" deshabilitado en 1, "+" en 10 con traspaso de
     foco, Quitar → Deshacer en la misma posición, Vaciar → Cancelar / Sí
     con foco en el `h1`; la segunda pestaña actualiza el contador.
   - ✔ Tests en verde.
@@ -510,7 +510,7 @@ Reglas:
   - Reducer del envío, huella del payload (suma el **nombre normalizado**
     además del teléfono), `idempotency_key` (reusa con la misma huella,
     nueva ante cualquier cambio —incluido el de nombre o teléfono— o después
-    de un 409) y
+    de un 409 o de un `invalida` general sin campo mapeable, #L de `ux.md`) y
     ciclo del `form_token` (espera si tiene < 3,5 s —
     `TOKEN_ESPERA_MIN_MS = 3500`—, renueva si tiene más de 1 h 50 min,
     un solo reintento silencioso ante `token_vencido`, vencido o
@@ -526,11 +526,12 @@ Reglas:
     cambiar solo el nombre → key nueva; cambiar solo el teléfono → key
     nueva; "Ana  Pérez" y "Ana Pérez" → misma huella; nunca se envía la
     misma key con otro nombre (el servidor respondería `invalida` con
-    `errores: []`).
+    `errores: []`); tras un `invalida` general, el siguiente envío (aun sin
+    cambios) usa una key nueva.
   - ✔ Test en verde.
 - [ ] **F12 — `validate-contact.ts` + `contact-draft.ts` + `OrderForm` +
-  `FormErrorSummary`** (**depende de `ux-agent`**: Q-F2(a), copy del error
-  general; el resto del formulario sale de `ux.md` y puede avanzar).
+  `FormErrorSummary`** (copy del error general
+  según `ux.md`, enmienda 2026-10-08, Q-F2(a)).
   - Reglas y copy textual de ux.md "Formulario" y "Validación" (ADR-0020:
     **dos campos obligatorios, "Nombre y apellido" y teléfono**, en ese
     orden); validación al enviar y después por blur; resumen enfocable con
@@ -605,12 +606,14 @@ Reglas:
       `formato`, `largo`) → error del nombre con el copy correcto;
     - nombre o teléfono cambiado después de una falla → "Reintentar" manda
       una `idempotency_key` **nueva**; sin cambios, la **misma**;
+    - un `invalida` general (sin campo mapeable) → el siguiente envío, aun
+      sin cambios, manda una `idempotency_key` **nueva** (#L);
     - AC-28: "Copiar detalle del pedido" no contiene el nombre ni el teléfono
       canarios.
   - ✔ Tests en verde.
 - [ ] **F14 — Rechazo por catálogo + `GET /v1/estado` al montar**
-  (**depende de `ux-agent`**: Q-F2(b), bajada de la variante "tope al
-  entrar"; el 409 sale de `ux.md` y puede avanzar).
+  (bajada de la variante "tope al
+  entrar" según `ux.md`, enmienda 2026-10-08, Q-F2(b)).
   - 409 → `applyRechazoCatalogo`, aviso enfocado, formulario intacto y
     key nueva al reenviar.
   - Al montar con líneas disponibles:
@@ -669,7 +672,8 @@ Reglas:
     ni `messages`).
   - ✔ Test en verde; `chat.spec.ts` sigue verde.
 - [ ] **F17 — `ChatComboAddToCart` en `ChatComboCard`** (el caso "combo
-  con una línea ya en 20" usa la respuesta de `ux-agent` a Q-F2(c) de F7).
+  con una línea ya en 10" usa el copy de `ux.md`, enmienda 2026-10-08,
+  Q-F2(c)).
   - Botón "Agregar combo al carrito" → "Agregar otra vez" (mismo nodo),
     confirmación "✓ Agregaste…", "Ver carrito" (cierra sin devolver el
     foco y enfoca el `h1` de `/carrito`), `aria-describedby` y sufijo

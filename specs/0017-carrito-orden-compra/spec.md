@@ -24,6 +24,22 @@ implementación del frontend recién iniciada (F1). *(Equivale a
 2026-09-30e, 2026-09-30f, 2026-10-05 y 2026-10-05b a
 [PRD-catalogo-renovarte.md](../../renovarte-catalogo/docs/PRD/PRD-catalogo-renovarte.md))
 
+> **Precisión (2026-10-08) — tope de cantidad por producto: 10 unidades
+> (modifica el tope anterior de 20 unidades por producto, propuesto como
+> #D en [`ux.md`](./ux.md) y recogido en el RFC y el plan):** el CTO/CEO
+> decidió que la cantidad de un mismo producto en el carrito y en la orden
+> es un **entero de 1 a 10**. Interpretación registrada (reflejada en
+> Alcance, AC-3, AC-4, AC-6 y Preguntas abiertas): (1) el máximo pasa de 20
+> a **10 unidades por producto**; (2) el **máximo de 100 líneas por orden
+> no cambia**; (3) el límite rige para agregar desde la ficha, para el
+> stepper del carrito y para agregar un combo (si un producto del combo ya
+> está en 10, no se supera: se avisa y no se agrega ese producto); (4) lo
+> valida también el servicio de órdenes, que rechaza cantidades fuera de
+> 1..10; (5) la pregunta abierta sobre si el 20 se confirmaba queda
+> **resuelta** con esta decisión. Esto **no contradice ningún ADR
+> `Accepted`**: el tope no está fijado en ninguno. Las precisiones
+> anteriores se conservan sin cambios.
+
 > **Precisión (2026-10-05b) — se agrega nombre y apellido (modifica la de
 > 2026-10-05; [ADR-0020](../../docs/decisions/ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md),
 > que supersede al ADR-0017):** al revisar el recorte, el CTO/CEO precisó
@@ -253,8 +269,9 @@ envío por fuera del sitio.
   opciones (más barato / medio / premium) se puede agregar completa con
   una sola acción — todos sus productos, 1 unidad de cada uno.
 - **Editar el carrito:** ver los productos (nombre, presentación, precio
-  unitario, cantidad, subtotal) y el total; cambiar cantidades; quitar
-  productos; vaciarlo.
+  unitario, cantidad, subtotal) y el total; cambiar cantidades (entero de
+  1 a **10 unidades por producto**, decisión 2026-10-08; máximo de 100
+  líneas por orden); quitar productos; vaciarlo.
 - **El carrito sobrevive a la navegación** dentro del sitio (ir de la
   ficha a la grilla, abrir/cerrar el chat) y a recargar la página, en el
   mismo navegador del mismo dispositivo.
@@ -453,17 +470,23 @@ envío por fuera del sitio.
 3. **AC-3 (RF-15):** En el carrito el visitante puede aumentar y disminuir
    la cantidad de un producto, quitarlo, y vaciar el carrito; subtotales
    por producto y total se actualizan de forma consistente (subtotal =
-   precio unitario × cantidad; total = suma de subtotales).
+   precio unitario × cantidad; total = suma de subtotales). La cantidad
+   de un producto va de 1 a **10 unidades** *(modificado 2026-10-08)*: al
+   llegar a 10 no se puede aumentar más y se informa el máximo.
 4. **AC-4 (RF-15):** Agregar al carrito un producto que ya está en él
-   incrementa su cantidad en vez de duplicar la línea.
+   incrementa su cantidad en vez de duplicar la línea, sin pasar de **10
+   unidades** *(modificado 2026-10-08)*: si ya está en 10, no se agrega
+   otra y se informa el máximo.
 5. **AC-5 (RF-15):** El contenido del carrito se mantiene al navegar entre
    páginas del sitio, al abrir/cerrar el chat y al recargar la página, en
    el mismo navegador.
 6. **AC-6 (RF-16):** En una respuesta de Colibrí con los 3 combos, cada
    combo ofrece una acción para agregarlo al carrito; al usarla, todos los
    productos de ese combo quedan en el carrito (1 unidad de cada uno,
-   sumándose a lo que ya hubiera), con el mismo nombre y precio que
-   mostraba la card del combo.
+   sumándose a lo que ya hubiera, sin pasar de 10 unidades por producto
+   *(modificado 2026-10-08)*; si un producto ya estaba en 10, no se
+   suma y se informa), con el mismo nombre y precio que mostraba la card
+   del combo.
 7. **AC-7 (RF-16):** Agregar un combo al carrito no cierra el chat ni
    borra la conversación en curso.
 8. **AC-8 (RF-17):** Con el carrito vacío no se puede generar una orden.
@@ -687,6 +710,12 @@ envío por fuera del sitio.
 - **Abierto, no bloqueante:** el tope de 80 caracteres tiene que coincidir
   entre el cliente y la validación del repo de órdenes (se coordina en
   Fase 3 / tareas).
+
+### Resueltas por el CTO/CEO (2026-10-08)
+
+- ~~#D (ux.md) — ¿se confirma el máximo de 20 unidades por producto?~~ →
+  **resuelta: el máximo pasa a 10 unidades por producto** (entero 1..10);
+  el máximo de 100 líneas por orden no cambia (AC-3, AC-4, AC-6).
 
 ### Bloquean la Fase 3 (diseño/RFC)
 
