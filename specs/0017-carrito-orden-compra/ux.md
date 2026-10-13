@@ -15,6 +15,18 @@
 > El copy nuevo de esta enmienda es propuesta, sujeta a aprobación del
 > CTO/CEO como todo copy nuevo.
 
+> **Enmienda 2026-10-08 (cierre de Q-F2, `plan.md` `## Frontend`):** se
+> cierran cuatro puntos que este documento dejaba abiertos: (a) el error
+> general de `invalida` sin campo mapeable (ver "Orden no enviada — datos no
+> aceptados"), (b) el cuerpo de la variante "tope avisado al entrar" (ver
+> "Orden no enviada — tope mensual"), (c) agregar con la línea ya en el
+> máximo, en la ficha y en el combo (ver "Zona de agregar" y "Card de
+> combo"), y (d) la nota del máximo por línea en el carrito (ver "Página
+> `/carrito`", ítem 3). No cambia ninguna decisión aprobada. **El copy y las
+> ubicaciones de esta enmienda fueron aprobados por el CTO/CEO el 2026-10-08.** No hay
+> mockup nuevo: son textos y ubicaciones dentro de componentes ya
+> diseñados.
+
 Prototipo de revisión operable (no es la implementación): ficha, grilla, chat
 con combos, carrito, formulario, confirmación y estados de error, en ancho
 móvil (390px) y escritorio, con y sin JS. El selector "Al enviar" simula cada
@@ -120,6 +132,19 @@ cambios salvo lo marcado):
      **Ver carrito**" (link a `/carrito`). Refleja siempre la cantidad real
      de esa línea, también al volver a la ficha más tarde o si se cambió la
      cantidad desde el carrito.
+   - **Línea ya en el máximo de 10 *(Q-F2c, 2026-10-08)*:** el botón **no
+     se deshabilita** (un botón deshabilitado no puede explicar por qué y
+     pierde el foco). Tocarlo no cambia la cantidad, no hace la escala del
+     contador y no anuncia "Agregaste". En cambio, la línea de estado
+     pasa a "✓ En tu carrito: 10 · **Ver carrito**" y, justo debajo, se
+     muestra la **nota del máximo** (`text-sm text-sage-700`): **"Máximo 10
+     unidades por producto. Si necesitás más, contalo cuando RenovArte te
+     contacte."** La nota depende del estado, no del toque: aparece en
+     cuanto la línea llega a 10 (el toque 9 → 10 ya la muestra) y sigue
+     visible al volver a la ficha con la línea en 10. Anuncio en el toque
+     que no suma (live region del sitio): "{nombre} ya está en el máximo de
+     10 unidades. No se agregó otra." El texto de la nota es **una sola
+     constante** compartida con el carrito y el combo.
    - Sin selector de cantidad en la ficha: cada toque suma 1 (AC-4) y la
      cantidad se edita en el carrito. Un stepper acá duplicaría el control
      y haría ambigua la acción ("¿agregar 2 o poner 2?").
@@ -194,6 +219,27 @@ relación con el presupuesto (todo lo existente queda igual):
   producto. Esta decisión evita dos cosas: dejar el botón igual (y que un
   doble toque duplique sin darse cuenta) y deshabilitarlo (que impediría un
   uso legítimo).
+- **Combo con alguna línea ya en el máximo de 10 *(Q-F2c, 2026-10-08)*:** el
+  botón no se deshabilita. Los productos que están en 10 se omiten sin
+  avisar uno por uno; los demás suman 1 como siempre. La línea de
+  confirmación dice siempre lo que realmente pasó (k = productos que
+  sumaron, N = productos del combo, M = N − k los que ya estaban en 10, X =
+  unidades del carrito):
+  - k = N: sin cambios ("✓ Agregaste los N productos de este combo, 1 de
+    cada uno. Tu carrito tiene X productos.").
+  - 0 < k < N: **"✓ Agregaste {k} de los {N} productos de este combo, 1 de
+    cada uno. {M} ya estaba en el máximo de 10 unidades por producto. Tu
+    carrito tiene X productos."** (con M > 1: "{M} ya estaban en el
+    máximo…"). Más "Ver carrito".
+  - k = 0: **"No agregamos nada: los {N} productos de este combo ya están
+    en el máximo de 10 unidades por producto. Tu carrito tiene X
+    productos."**, sin "✓", más "Ver carrito".
+  - El botón pasa a "Agregar otra vez" solo si k > 0. Con k = 0 conserva su
+    texto. Sin escala del contador si k = 0. Anuncio en la región del
+    diálogo: el mismo texto sin "✓" y con el prefijo "Combo {nivel}:" que
+    ya usa el anuncio del combo. No se repite la nota de "contalo cuando
+    RenovArte te contacte": ahí no hay lugar para ella, y la nota ya está
+    en cada línea del carrito (`/carrito`, ítem 3).
 - **"Ver carrito"** es navegación en la misma pestaña (`<Link
   href="/carrito">`), cierra el panel **sin** devolver el foco al FAB y
   lleva el foco al `h1` del carrito. La conversación **no se pierde**:
@@ -233,6 +279,16 @@ Ruta estática nueva, `<title>` "Tu carrito — RenovArte". `noindex` sugerido
      "−" se deshabilita en 1 (para sacar una línea se usa "Quitar", que es
      una acción explícita y se puede deshacer). "+" se deshabilita en el
      máximo por línea (ver #D).
+   - **Nota del máximo *(Q-F2d, 2026-10-08)*:** cuando la cantidad de la
+     línea es 10, debajo de la fila del stepper (en una fila propia, con
+     el mismo margen izquierdo que el nombre, `text-sm text-sage-700`)
+     aparece: **"Máximo 10 unidades por producto. Si necesitás más,
+     contalo cuando RenovArte te contacte."** Es texto fijo del estado,
+     no un toast: aparece al llegar a 10 y desaparece al bajar a 9, y no
+     es live region (el cambio ya se anuncia, ver Interacción). Si la
+     línea también tiene la nota de precio cambiado, va después de esa.
+     En 390px ocupa dos líneas; la fila crece hacia abajo y no mueve el
+     stepper.
    - "Quitar" es un botón de texto subrayado. Quitar una línea la reemplaza
      por una fila "Quitaste {nombre}. **Deshacer**", que queda hasta la
      próxima acción en el carrito (sin temporizador: un límite de tiempo
@@ -363,7 +419,8 @@ del diálogo** (ver Accesibilidad).
 - **+ / −:** cambian la cantidad al instante, recalculan subtotal y total
   (AC-3) y el foco queda en el mismo botón. Si ese botón se deshabilita
   (llegó a 1 o al máximo), el foco pasa al otro botón del stepper.
-  Anuncio: "{nombre}: N unidades. Total $ X."
+  Anuncio: "{nombre}: N unidades. Total $ X." Al llegar a 10 se suma: "Es
+  el máximo por producto." *(Q-F2d)*
 - **Quitar:** la línea se reemplaza por la fila de deshacer; el foco va a
   "Deshacer". Anuncio: "Quitaste {nombre} del carrito. Total $ X."
   "Deshacer" la reinserta en la misma posición y devuelve el foco a su
@@ -489,6 +546,9 @@ catálogo sigue 100% funcional sin JS (AC-21). Mismo patrón
 | Enviando | Botón "Enviando orden…", todo en solo lectura | Igual |
 | Orden no enviada (falla) | Banner arriba del botón (foco ahí), con Reintentar, canales y "Copiar detalle" | Igual |
 | Orden no enviada (tope) | Banner de tope, sin Reintentar, con canales y "Copiar detalle" | Igual |
+| Datos no aceptados, sin campo identificable | Aviso "Tu orden no se envió" arriba del formulario (foco ahí), sin "Reintentar", con canales y "Copiar detalle" | Igual |
+| Tope avisado al entrar | Aviso `role="status"` en lugar de formulario y botón de envío; carrito editable | Igual, en la columna derecha |
+| Línea en 10 unidades | Ficha: línea de estado + nota del máximo. Carrito: nota bajo el stepper, "+" deshabilitado. Combo: confirmación con "ya estaba en el máximo" | Igual |
 | Precio cambió en el servidor | Aviso arriba de la lista (foco ahí) y líneas actualizadas; hay que volver a enviar | Igual |
 | Confirmada | Columna centrada: número, qué sigue, canales, resumen | Igual, `max-w-2xl` |
 | Sin JS | Links del header funcionan; botón de agregar inerte con aviso `noscript`; `/carrito` muestra aviso y canales | Igual |
@@ -533,6 +593,67 @@ catálogo sigue 100% funcional sin JS (AC-21). Mismo patrón
   variante no se muestra el formulario (no tiene sentido pedir datos que no
   se van a poder enviar). Ver Pregunta abierta #F. El comportamiento al
   enviar (arriba) tiene que existir igual, como garantía.
+- **Cuerpo de la variante "tope avisado al entrar" *(Q-F2b, 2026-10-08)*:
+  reusa el banner de tope, no se escribe un cuerpo nuevo.** Una sola
+  fuente de copy y de canales evita que los dos avisos se desfasen.
+  Diferencias, solo las que impone que todavía no se intentó enviar nada:
+  - Título: **"Por ahora no podemos recibir órdenes desde el sitio"** (no
+    "Tu orden no se envió": no se envió nada).
+  - Cuerpo, canales (teléfono + WhatsApp, email, Instagram, con sus
+    "Copiar"), botón "Copiar detalle del pedido" y su nota "Para pegarlo
+    en tu mensaje.": idénticos al banner de tope, sin cambios. El cuerpo
+    sigue siendo "Este mes llegamos al límite de órdenes que podemos
+    recibir desde el sitio. Tu carrito sigue guardado. Mientras tanto,
+    podés hacer tu pedido por teléfono, por email o por mensaje directo en
+    Instagram:". Es verdadero en ambos momentos.
+  - Sin "Reintentar" y sin el botón "Enviar orden".
+  - `role="status"` y **sin mover el foco** (no es respuesta a una acción
+    del visitante, y llega después de montar la página).
+  - **Ubicación:** ocupa el lugar de "Tus datos" y "Enviar orden"
+    (debajo del resumen con el total, que sigue visible; en escritorio, en
+    la columna derecha). Las líneas siguen editables arriba.
+  - Se pide el estado al montar, pero el formulario se muestra desde el
+    primer render: si la respuesta tarda o falla, no cambia nada visible
+    (decisión del plan). Si llega `tope_alcanzado` con el formulario ya
+    visible, se reemplaza por el aviso y los datos tipeados quedan en el
+    borrador de `sessionStorage`; el cambio se anuncia por el `role="status"`.
+
+### Orden no enviada — datos no aceptados, sin campo identificable *(Q-F2a, 2026-10-08)*
+
+Caso: el servidor responde `invalida` y el cliente no puede atribuirlo a
+nombre ni a teléfono. Cubre `lineas` (más de 100), `total_visto`,
+`errores: []` (campo trampa completado, o la misma `idempotency_key` con
+otro nombre o teléfono) y cualquier otro problema no mapeable. **El
+visitante nunca ve la causa**: ni "honeypot", ni "clave", ni "payload", ni
+"inválido" a secas. Para él es "algo no pasó la revisión", y lo que puede
+hacer es revisar y reintentar, o pedir por otro canal.
+
+- **Ubicación:** arriba del formulario, en el **mismo lugar del resumen de
+  errores** ("Tus datos", debajo de la bajada, antes del primer campo). No
+  coexiste con el resumen: si hay errores por campo, gana el resumen. Mismo
+  tratamiento visual que el banner de falla (`rounded-lg border-[1.5px]
+  border-sage-700 bg-beige-50`, ícono de alerta en línea fina).
+- **Copy:**
+  - Título: **"Tu orden no se envió"** (el mismo del banner de falla: es
+    verdad y el visitante ya lo reconoce).
+  - Cuerpo: **"Algo de lo que enviaste no pasó la revisión. Mirá que tu
+    carrito y tus datos estén bien y volvé a tocar «Enviar orden». Si
+    sigue sin funcionar, podés hacer el pedido por teléfono, por email o
+    por mensaje directo en Instagram:"** + los mismos canales (teléfono +
+    WhatsApp, email, Instagram, con "Copiar") y **"Copiar detalle del
+    pedido"** del banner de falla.
+  - Sin botón "Reintentar envío": "Enviar orden" sigue visible y el
+    formulario, editable; un segundo botón de reenvío duplicaría la acción.
+    Se elige reusar los canales y el detalle porque con este error el
+    visitante puede quedar en un ciclo que no puede arreglar (por ejemplo
+    más de 100 líneas).
+- **Foco y rol:** `role="alert"` y el foco va al contenedor (`tabindex="-1"`),
+  igual que el banner de falla: es el resultado directo del envío. El
+  carrito y los datos del formulario quedan intactos.
+- **Para la implementación (no es decisión de UX):** el siguiente "Enviar
+  orden" después de este error tiene que salir con una `idempotency_key`
+  nueva. Con la misma huella, el cliente reusaría la key y el caso "misma
+  key con otro nombre" volvería a fallar igual. Ver Preguntas abiertas #L.
 - El resto del sitio no cambia: el header, la ficha (el botón de agregar
   sigue funcionando, porque armar el carrito no cuesta nada) y el chat
   (AC-21).
@@ -598,7 +719,7 @@ tocó "Enviar", o alguien manipuló el navegador.
   contenedor con `tabindex="-1"`, etiquetado por su título, y cada ítem es
   un botón que enfoca el campo.
 - **Banners de envío:** `role="alert"` para "no se envió" (el visitante
-  tiene que enterarse ya); `role="status"` para avisos neutros
+  tiene que enterarse ya), incluido el aviso de datos no aceptados; `role="status"` para avisos neutros
   (revalidación, tope avisado al entrar).
 - **Contraste:** el texto nuevo usa `sage-600` o más oscuro sobre
   `beige-50`/`beige-100` (AA según `brand.md`). El contador usa `sage-600`
@@ -694,10 +815,18 @@ Ninguna bloquea la Fase 3; todas tienen un default aplicado en el mockup.
 - **#C — Agregar desde la grilla.** Resuelto en esta pasada: no (ver
   motivos arriba). ¿El CTO/CEO está de acuerdo, o lo quiere igual? Si lo
   quiere, necesita una pasada de UX sobre `ProductCard`.
-- **#D — Máximo por línea.** Propuse 20 unidades por producto, con la nota
-  "Máximo 20 unidades por producto. Si necesitás más, contalo cuando
+- **#D — Máximo por línea. DECIDIDA (2026-10-08): 10 unidades por
+  producto** (cantidad 1..10; las 100 líneas por orden no cambian). Nota:
+  "Máximo 10 unidades por producto. Si necesitás más, contalo cuando
   RenovArte te contacte." Es una protección contra un "99" por error, no
-  una regla de stock. ¿Está bien 20, otro número o sin máximo?
+  una regla de stock. La propuesta original era 20; el owner lo bajó a 10.
+  El tope y su nota quedan fijados en "Ficha", "Card de combo" y
+  `/carrito` ítem 3.
+- **#L — Key nueva tras `invalida` general (2026-10-08).** Se pide que el
+  envío siguiente a ese error use una `idempotency_key` nueva (ver
+  "Datos no aceptados"). Es de Frontend/Backend, no de UX: lo dejo para
+  que lo confirme el especialista; si el servidor ya tolera reusar la key
+  en ese caso, se puede ignorar.
 - **#E — Consentimiento.** Apliqué el default de #9 (una línea
   informativa, sin checkbox). Si la lectura legal de la Ley 25.326 pide
   consentimiento expreso, se agrega un checkbox obligatorio arriba del

@@ -5,6 +5,11 @@ aprobación del CTO/CEO en el gate de Fase 3, junto con las secciones
 `## Infra` (`devops-agent`) y `## Frontend` (`frontend-agent`) de
 `plan.md`.
 
+**Nota 2026-10-08 (decisión del owner, spec 0017 AC-3/AC-4/AC-6, ux.md #D):**
+el tope por producto pasa de 20 a **10 unidades** (`cantidad` entero 1..10 en
+§3.2). Las 100 líneas por orden no cambian. Es un endurecimiento de la
+validación del servidor; la forma del contrato no cambia.
+
 **Cambios de la revisión 4 (2026-10-05b, [ADR-0020](../../docs/decisions/ADR-0020-datos-personales-ordenes-mvp-nombre-y-telefono.md):
 el formulario pide "Nombre y apellido" y teléfono):**
 
@@ -174,7 +179,7 @@ interface CrearOrdenRequest {
   form_token: string;             // de GET /v1/estado (§6.2)
   lineas: Array<{
     producto_id: string;          // `id` de products.json
-    cantidad: number;             // entero 1..20 (ux.md #D)
+    cantidad: number;             // entero 1..10 (ux.md #D; antes 1..20)
     precio_visto: number;         // entero ARS: el precio_venta que el visitante tenía en pantalla
   }>;                             // 1..100 líneas (Q-F1), producto_id sin repetir
   total_visto: number;            // entero ARS = Σ precio_visto × cantidad, lo que el visitante vio

@@ -257,7 +257,7 @@ Lo que el cliente tiene que cumplir (sin cambios salvo los límites):
 6. Mapeo `resultado` → estado UX: RFC §3.2.
 7. `rechazada_por_catalogo` → aplicar `precio_vigente`/`no_disponible`,
    mostrar el total y exigir un nuevo envío con key nueva.
-8. Límites que valida también el servidor: cantidad 1..20, **1..100
+8. Límites que valida también el servidor: cantidad 1..10 (tope por producto de 20 a 10 unidades, decisión del owner 2026-10-08), **1..100
    líneas**, reglas de contacto de `ux.md` (nombre: 2..80 tras recortar y
    al menos una letra; teléfono: 8..15 dígitos). El servidor es **igual o
    más permisivo** que el cliente (cuenta puntos de código, no unidades
@@ -444,7 +444,7 @@ borrado y el `budget-guard` ampliado. Son **24 tareas (B1–B24)** en
 construido sobre
 [`ux.md`](./ux.md), aprobado en la Fase 2, con los defaults del mockup para
 las preguntas que quedaron sin respuesta: #C no se agrega desde la grilla,
-#D máximo 20 unidades por línea, #E aviso de privacidad de una línea, #G
+#D máximo 10 unidades por línea (bajado de 20 por el owner, 2026-10-08), #E aviso de privacidad de una línea, #G
 header sticky y #H número `RA-48271`. Consume el contrato de `## Backend` y
 del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
 `ux.md` no alcanza, lo dejo como pregunta al final de la sección.
@@ -567,8 +567,8 @@ del RFC §3/§5. Este plan no decide layout, copy ni interacción: donde
      marcar la línea solo al abrir `/carrito` dejaba al contador contando
      de más hasta esa visita, y ux.md dice "sin contar líneas de
      productos que ya no están".
-4. **Límites:** `MAX_POR_LINEA = 20` (#D, igual que el contrato
-   `cantidad` 1..20). Líneas: el contrato acepta **1..100** (Q-F1,
+4. **Límites:** `MAX_POR_LINEA = 10` (#D, igual que el contrato
+   `cantidad` 1..10). Líneas: el contrato acepta **1..100** (Q-F1,
    cerrada). El carrito **no** impone un tope de líneas en el cliente:
    100 productos distintos no se alcanzan en uso real, y un tope
    silencioso sería una decisión de UX. `MAX_LINEAS = 100` vive solo en
@@ -810,7 +810,7 @@ nunca** lleva `nombre`/`presentacion` de producto ni ninguna clave fuera de
 |---|---|---|
 | AC-1 | `add-to-cart-button.test.tsx`: botón y `noscript` en el HTML; inerte antes de hidratar | Ficha → Agregar → `/carrito` muestra nombre, presentación y el mismo precio que la ficha |
 | AC-2 | `cart-header-link.test.tsx`: `aria-label` vacío / N; contador `aria-hidden`; "99+"; `cart-model.test.ts`: unidades excluyendo no disponibles | Header con el link en home, categoría, grupo, ofertas, ficha y carrito; contador visible después de scrollear (sticky) |
-| AC-3 | `cart-model.test.ts`: `setCantidad`, límites 1..20, subtotal y total, quitar/restaurar posición, vaciar | Stepper +/−, Quitar → Deshacer, Vaciar → Cancelar / Sí; totales en pantalla; foco en cada caso |
+| AC-3 | `cart-model.test.ts`: `setCantidad`, límites 1..10, subtotal y total, quitar/restaurar posición, vaciar | Stepper +/−, Quitar → Deshacer, Vaciar → Cancelar / Sí; totales en pantalla; foco en cada caso |
 | AC-4 | `cart-model.test.ts`: agregar dos veces suma cantidad, sin duplicar la línea | Dos toques en Agregar → una línea × 2 |
 | AC-5 | `cart-store.test.ts`: persistencia con `Storage` fake, evento `storage`, JSON corrupto → vacío | Recargar, navegar ficha → grilla → carrito y abrir/cerrar el chat conservan el carrito; segunda pestaña actualiza el contador |
 | AC-6 | `cart-model.test.ts` (`addCombo` suma 1 de cada uno); `chat-combo-card.test.tsx` (botón, `aria-describedby`, sufijo sr-only); `chat-reducer.test.ts` (`COMBO_ADDED`) | Combo por `routeWebSocket` → "Agregar combo" → líneas con el mismo nombre y precio que la card; "Agregar otra vez" suma |
@@ -900,10 +900,9 @@ sección ya no la sigue.
   mientras esté en `/carrito` (AC-28, decisión 9; ADR-0020).
 - **Q-F6** → `total_vigente` se calcula igual que el total local.
 
-**Abierta (va a `ux-agent` durante la implementación, no bloquea el
-diseño):**
-
-- **Q-F2 — Copy/comportamiento que `ux.md` no fija:**
+**Q-F2 — cerrada: (a)-(d) aprobadas por el owner el 2026-10-08**
+(`ux.md`, enmienda 2026-10-08; ya no bloquea F7, F9, F12 ni F14). Se
+conserva el detalle de lo que se preguntó:
   - (a) texto del "error general arriba del formulario" para `invalida`
     sin campo mapeable (cubre también honeypot y `lineas` > 100) →
     bloquea la parte visible de **F12**;
@@ -911,15 +910,15 @@ diseño):**
     cuerpo, los canales y "Copiar detalle" del banner de tope? →
     **F14**;
   - (c) "Agregar al carrito" en la ficha y "Agregar combo" cuando una
-    línea ya está en 20: ¿se topea en silencio y se muestra la nota de
+    línea ya está en 10: ¿se topea en silencio y se muestra la nota de
     #D?, ¿dónde? → **F7** (y el caso de combo en **F17**, que usa la
     misma regla del modelo);
   - (d) ubicación y copy de la nota de #D (¿debajo del stepper cuando
     `+` está deshabilitado?) → **F9**.
 
-  Mientras tanto, la lógica pura (F3: `addProduct`/`addCombo` topean en
-  20 y devuelven un flag `topeado`) se construye sin decidir cómo se
-  muestra.
+  La lógica pura (F3: `addProduct`/`addCombo` topean en 10 y devuelven
+  un flag `topeado` con el detalle) se muestra según el copy aprobado en
+  `ux.md`.
 
 **Riesgos conocidos (sin decisión pendiente):**
 
