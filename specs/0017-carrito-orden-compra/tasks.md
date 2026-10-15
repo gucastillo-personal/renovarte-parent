@@ -51,7 +51,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
 
 #### Preparación + bootstrap
 
-- [ ] **B1 — Verificar pricing y límites vigentes** (páginas oficiales):
+- [x] **B1 — Verificar pricing y límites vigentes** (páginas oficiales):
   - SES: precio por 1.000, free tier y límites de sandbox; confirmar que
     el SDK v3 respeta `maxAttempts: 1` en `SendEmail`.
   - Lambda, DynamoDB on-demand, Function URL, EventBridge Scheduler y
@@ -64,7 +64,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
   - Anotar los valores con la fecha en el `README.md`, y ajustar el RFC
     §8/§10 y los costos unitarios del ledger (B14) si algo cambió.
   - Confirmar en Billing si el free tier de 12 meses sigue vigente.
-- [ ] **B2 — Bootstrap del repo** (tras aprobación de creación, §II.6/§II.7):
+- [x] **B2 — Bootstrap del repo** (tras aprobación de creación, §II.6/§II.7):
   - `README.md` (**público:** sin ID de cuenta, ARNs reales ni URL o IDs
     de Discord), `CLAUDE.md` (reglas de `renovarte-chat-gateway/CLAUDE.md`
     más una sección "Datos personales": no loguear ni persistir
@@ -76,7 +76,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
     `@aws-sdk/client-ssm` y `@aws-sdk/client-lambda`. Discord sin
     librería (`fetch` nativo). Instalar con aprobación humana.
   - Agregar el repo como submódulo de `renovarte-parent`.
-- [ ] **B3 — `src/wire.ts`:** tipos exactos del RFC §3 (`EstadoResponse`,
+- [x] **B3 — `src/wire.ts`:** tipos exactos del RFC §3 (`EstadoResponse`,
   `CrearOrdenRequest` con `contacto: { nombre, telefono }`,
   `CrearOrdenResponse`, `CampoOrden` con `"contacto.nombre"`), con los
   comentarios de límites (**1..100 líneas**) y de `token_vencido`
@@ -102,7 +102,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
 
 #### Núcleo puro (sin AWS ni Discord)
 
-- [ ] **B4 — `lib/validate-order.ts`:**
+- [x] **B4 — `lib/validate-order.ts`:**
   - Esquema estricto: clave desconocida → `no_permitido`.
   - Límites de tamaño (16 KB).
   - Honeypot `sitio_web`.
@@ -127,7 +127,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
     NFC/NFD, solo dígitos/símbolos, CR/LF/tab/bidi) **compartida con
     `frontend-agent`** (F-tarea del formulario) para probar la paridad
     cliente/servidor.
-- [ ] **B5 — `lib/catalog.ts`:**
+- [x] **B5 — `lib/catalog.ts`:**
   - Fetch de `CATALOG_PRODUCTS_URL` (timeout de 3 s), caché de 5 min e
     `If-None-Match`/304; `forceRefresh()`; fallback a la copia válida de
     < 24 h; sin copia → `catalogo_no_disponible`.
@@ -135,19 +135,19 @@ referencian); B21–B24 son nuevas, de esta revisión.
     `id/nombre/presentacion/precio_venta`.
   - Tests con un fetch fake (200, 304, 5xx, JSON inválido, fila inválida,
     clave de costo ignorada).
-- [ ] **B6 — `lib/price-check.ts`:** líneas vs. catálogo → `ok` o
+- [x] **B6 — `lib/price-check.ts`:** líneas vs. catálogo → `ok` o
   `{ lineas con problema, total_vigente }`; chequeo `total_visto === Σ`.
   Tests (AC-15).
-- [ ] **B7 — `lib/form-token.ts`:**
+- [x] **B7 — `lib/form-token.ts`:**
   - Emitir y verificar HMAC-SHA256 con timestamp; ventana de 3 s–2 h;
     comparación en tiempo constante.
   - **Cualquier token fuera de ventana (vencido o de < 3 s), con firma
     ajena o malformado → `token_vencido`** (Q-F4).
   - Tests (AC-19).
-- [ ] **B8 — `lib/order-number.ts`:** `RA-` + 5 dígitos con
+- [x] **B8 — `lib/order-number.ts`:** `RA-` + 5 dígitos con
   `crypto.randomInt`; reserva `NUM#` condicional con hasta 5 reintentos.
   Tests: formato, colisión → reintento, 5 colisiones → `falla`/`interno`.
-- [ ] **B9 — `lib/order-model.ts` + `lib/render/text.ts` +
+- [x] **B9 — `lib/order-model.ts` + `lib/render/text.ts` +
   `lib/mail/render.ts`** (ampliada):
   - Builder de `OrdenParaEntrega` por allowlist (nombre y presentación
     del catálogo, nunca spread).
@@ -171,14 +171,14 @@ referencian); B21–B24 son nuevas, de esta revisión.
     nombre con `<script>`/`&`/comillas escapado en
     el HTML y literal en el texto) y de ausencia de tokens prohibidos
     (AC-16), con una clave de costo inyectada en el catálogo.
-- [ ] **B10 — `lib/log.ts`:** logger JSON con allowlist de campos
+- [x] **B10 — `lib/log.ts`:** logger JSON con allowlist de campos
   (incluye `canal`, `codigo`, `campo`, `http_status`; la línea de relleno
   es una constante del render y no pasa por el logger; **no** incluye el
   nombre ni el teléfono ni su largo). Test: nombre y teléfono canario,
   contacto, IP, body, URL del webhook y bodies de Discord se descartan
   (AC-18, AC-26); un error de validación se loguea solo con `campo` y
   `codigo`, nunca el valor.
-- [ ] **B21 — `lib/discord/render.ts`** (nueva):
+- [x] **B21 — `lib/discord/render.ts`** (nueva):
   - Primera línea fuera del bloque, solo con datos del servidor: número,
     total y cantidad de productos (**sin nombre ni teléfono**); después
     fecha y hora.
@@ -383,7 +383,7 @@ Reglas:
 
 #### Base pura (sin UI visible)
 
-- [ ] **F1 — `src/lib/contact.ts` + guardia de AC-14.**
+- [x] **F1 — `src/lib/contact.ts` + guardia de AC-14.**
   - Constantes de email e Instagram, y los helpers `mailtoConsulta(numero)`
     e `INSTAGRAM_DM_URL`.
   - **Enmienda 2026-10-05:** suma `RENOVARTE_TELEFONO` (`1130579528`) y
@@ -394,7 +394,7 @@ Reglas:
   - `tests/unit/no-runtime-backend.test.ts`: falla si aparece bajo `src/`
     un `route.(ts|js)`, un `middleware.*`/`proxy.*` o `"use server"`.
   - ✔ Los dos tests en verde; gate verde.
-- [ ] **F2 — `src/lib/orders/wire.ts`** (depende de **B3**; mientras B3 no
+- [x] **F2 — `src/lib/orders/wire.ts`** (depende de **B3**; mientras B3 no
   cierre, se copian los tipos del RFC §3 textualmente).
   - Guards `isEstadoResponse` / `isCrearOrdenResponse`.
   - `tests/unit/orders-wire.test.ts`: un JSON de ejemplo por variante, y
@@ -408,7 +408,7 @@ Reglas:
     nombre.
   - ✔ Test en verde; cuando cierre B3, el diff contra el `src/wire.ts` de
     `renovarte-ordenes` queda vacío salvo el comentario de cabecera.
-- [ ] **F3 — `src/lib/cart/model.ts`.**
+- [x] **F3 — `src/lib/cart/model.ts`.**
   - Operaciones puras con `MAX_POR_LINEA = 10`; `addProduct`/`addCombo`
     topean en 10 y devuelven un flag `topeado` **con el detalle** (k
     productos sumados, M topeados) para el copy del combo de `ux.md`
@@ -423,7 +423,7 @@ Reglas:
     - unidades sin contar las no disponibles;
     - `parseStored` con JSON corrupto o de otra versión → vacío.
   - ✔ Test en verde.
-- [ ] **F4 — `src/lib/cart/store.ts`.**
+- [x] **F4 — `src/lib/cart/store.ts`.**
   - Store externo con un `Storage` inyectable, clave
     `renovarte:carrito:v1`, evento `storage` y `getServerSnapshot` vacío.
   - `tests/unit/cart-store.test.ts` (AC-5, AC-18, AC-28): persiste, notifica,
@@ -431,7 +431,7 @@ Reglas:
     `CartLine` (una línea con `nombre`/`telefono` de contacto extra no los
     escribe en `localStorage`).
   - ✔ Test en verde.
-- [ ] **F5 — `src/lib/cart/revalidate.ts` + `src/lib/cart/catalog-slim.ts`.**
+- [x] **F5 — `src/lib/cart/revalidate.ts` + `src/lib/cart/catalog-slim.ts`.**
   - `revalidateCart` y `applyRechazoCatalogo`.
   - Proyección por allowlist de 5 campos.
   - `tests/unit/cart-revalidate.test.ts` (AC-15) y
@@ -441,7 +441,7 @@ Reglas:
 
 #### Header, ficha y shell de `/carrito`
 
-- [ ] **F6 — `CartProvider` + header sticky + `CartHeaderLink`.**
+- [x] **F6 — `CartProvider` + header sticky + `CartHeaderLink`.**
   - `layout.tsx`: `CartProvider` (con los ids del catálogo) envuelve a
     `ChatProvider`; live region del sitio fuera de `<main>`.
   - Header `sticky top-0 z-30 justify-between`.
@@ -450,7 +450,7 @@ Reglas:
     label "Carrito" desde `sm`.
   - ✔ Test en verde; `catalog.spec.ts` y `chat.spec.ts` siguen verdes
     con el header sticky.
-- [ ] **F7 — `AddToCartButton` en la ficha** (copy y
+- [x] **F7 — `AddToCartButton` en la ficha** (copy y
   ubicación de "línea ya en 10" según `ux.md`, enmienda 2026-10-08,
   Q-F2(c)).
   - Botón inerte antes de hidratar, línea de estado, anuncio, foco que
@@ -462,7 +462,7 @@ Reglas:
     - AC-2: link y contador en home, categoría, grupo, ofertas y ficha,
       y visibles después de scrollear.
   - ✔ Tests en verde.
-- [ ] **F8 — Página `/carrito` (shell + lectura).**
+- [x] **F8 — Página `/carrito` (shell + lectura).**
   - `src/app/carrito/page.tsx`: SSG, title "Tu carrito", `robots`
     noindex, mapa reducido del catálogo, `noscript` y padding inferior
     ≥ 104px.
@@ -478,7 +478,7 @@ Reglas:
     - recarga y navegación conservan el carrito (AC-5);
     - `aria-current` en el header.
   - ✔ Tests en verde; `pnpm build` lista `/carrito` como estática.
-- [ ] **F9 — Edición del carrito** (nota de #D según `ux.md`,
+- [x] **F9 — Edición del carrito** (nota de #D según `ux.md`,
   enmienda 2026-10-08, Q-F2(d)).
   - `QuantityStepper`, `CartUndoRow` y `CartClearControl`, con las reglas
     de foco de ux.md y los anuncios.

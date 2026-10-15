@@ -348,6 +348,8 @@ honesta se rechazaría hasta que alguien mergee el sync y redeploye.
 - Si el fetch falla y no hay caché válida de menos de 24 h:
   `falla`/`catalogo_no_disponible`. **Nunca se acepta una orden sin
   catálogo contra el cual validar.**
+  Responde **503** (dependencia transitoria, reintentable; no consume
+  cupo ni reserva número). *Precisión 2026-10-14.*
 
 ### 4.3 Reglas
 
@@ -356,6 +358,7 @@ honesta se rechazaría hasta que alguien mergee el sync y redeploye.
   `precio_vigente`.
 - `total_visto !== Σ precio_visto × cantidad` → `invalida` con
   `campo: "total_visto"`.
+  Código `formato`, status **422** (precisión 2026-10-14).
 
 Con al menos una línea con problema: `409 rechazada_por_catalogo` y no se
 entrega nada por ningún canal. Rechazar en lugar de corregir, como
