@@ -280,7 +280,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
     flag apagado** y de **ningún dato personal (nombre ni teléfono
     canario) ni URL de webhook en escrituras ni logs**, también en los
     caminos `invalida`, `rechazada_por_catalogo` y canal fallido.
-- [ ] **B16 — `handlers/budget-guard.ts`** (ampliada):
+- [x] **B16 — `handlers/budget-guard.ts`** (ampliada):
   - Parseo del mensaje SNS: Budget (texto que menciona `BUDGET_NAME`) →
     motivo `presupuesto`; alarma de CloudWatch (`AlarmName ===
     FLOOD_ALARM_NAME`, `NewStateValue === "ALARM"`) → motivo `flood`;
@@ -295,7 +295,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
 - ~~**B23 — `handlers/discord-retention.ts` + `lib/discord/retention-queue.ts`**
   (AC-29)~~ — **RETIRADA el 2026-10-05** (recorte de datos del MVP). El
   diseño está en el historial de git (commit `8371ac9`) por si se retoma.
-- [ ] **B17 — `src/leak-audit.ts` + `pnpm check:leak`:**
+- [x] **B17 — `src/leak-audit.ts` + `pnpm check:leak`:**
   - Tokens de costo, margen y precio LACA en `src/`, en un mail
     renderizado de ejemplo, en un **mensaje de Discord renderizado de
     ejemplo** (con su adjunto) y en los JSON de ejemplo del contrato.
@@ -307,7 +307,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
 
 #### Cierre y coordinación
 
-- [ ] **B18 — `dev/local-server.ts` + docs:**
+- [x] **B18 — `dev/local-server.ts` + docs:**
   - Harness HTTP local con el mismo contrato: mailer fake y Discord fake
     que imprimen lo que enviarían, catálogo fixture,
     `ALLOWED_ORIGINS=http://localhost:3000`, y flags para forzar la falla
