@@ -201,7 +201,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
 
 #### Estado y entrega
 
-- [ ] **B11 — `lib/payload-hmac.ts` + `lib/idempotency.ts`** (reescrita por el doble canal; `payload-hmac.ts` nuevo, rev. 4):
+- [x] **B11 — `lib/payload-hmac.ts` + `lib/idempotency.ts`** (reescrita por el doble canal; `payload-hmac.ts` nuevo, rev. 4):
   - `payload-hmac.ts` (RFC §5.4.1): clave derivada `HMAC(secreto,
     "payload-v1" ‖ idempotency_key)`; serialización canónica
     (`JSON.stringify` de un array de orden fijo: líneas ordenadas, total,
@@ -221,7 +221,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
   - **Sin `DeleteItem`.**
   - Tests con un DynamoDB fake, incluidos claims concurrentes (AC-24) y
     reintento con la misma key pero otro nombre → `invalida`, sin envíos.
-- [ ] **B12 — `lib/mail/ses-sender.ts`:**
+- [x] **B12 — `lib/mail/ses-sender.ts`:**
   - SES v2 `SendEmail` con `Content.Simple` (nunca `Raw`: así el nombre no
     puede inyectar headers) y `ToAddresses = [ORDER_RECIPIENT]` (validado al
     arrancar), `FromEmailAddress = ORDER_SENDER_EMAIL`; **sin `ReplyTo`**
@@ -230,7 +230,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
   - Clasificación: `MessageId` → `entregado`; 4xx o error antes de
     conectar → `fallido`; 5xx, timeout o socket cortado → `incierto`.
   - Tests (AC-11, AC-17, AC-20).
-- [ ] **B22 — `lib/discord/webhook.ts` + `lib/delivery.ts`** (nueva):
+- [x] **B22 — `lib/discord/webhook.ts` + `lib/delivery.ts`** (nueva):
   - Webhook: carga la URL de SSM en el cold start (en paralelo con el
     HMAC) y la valida contra
     `^https://discord\.com/api/webhooks/\d{17,20}/[A-Za-z0-9_-]{60,80}$`;
@@ -248,13 +248,13 @@ referencian); B21–B24 son nuevas, de esta revisión.
     `orden_aceptada`). Sin programación de borrado (AC-29 retirado).
   - Tests con fetch fake y DynamoDB fake (AC-20, AC-23, AC-24, AC-25,
     AC-26): la matriz completa de estados de la tabla de §5.3.
-- [ ] **B13 — `lib/rate-limit.ts`:**
+- [x] **B13 — `lib/rate-limit.ts`:**
   - HMAC de la IP; contadores `RL#` por hora y por día (POST y
     aceptadas).
   - **Cupo global de órdenes** `CUPO#dia`/`CUPO#mes`, consumido una vez
     por key en la reserva; sin devolución.
   - Umbrales por env var. Tests (AC-19).
-- [ ] **B14 — `lib/ledger.ts` + `lib/control.ts`:**
+- [x] **B14 — `lib/ledger.ts` + `lib/control.ts`:**
   - `LEDGER#YYYY-MM` con `ADD` atómico y costos unitarios conservadores
     (el costo por request incluye el `UpdateItem` extra de Discord; costo
     unitario de Discord = 0).
@@ -266,7 +266,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
 
 #### Handlers
 
-- [ ] **B15 — `handlers/http.ts`:**
+- [x] **B15 — `handlers/http.ts`:**
   - Routing por `rawPath` exacto (`/v1/estado`, `/v1/ordenes`) sobre el
     evento de Function URL (payload v2).
   - **Sin headers `Access-Control-*` ni ruta `OPTIONS`** (CORS lo maneja
