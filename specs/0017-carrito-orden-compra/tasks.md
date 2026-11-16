@@ -762,7 +762,7 @@ en vivo con el CTO/CEO.
 
 #### Verificaciones y bootstrap (manuales, con el CTO/CEO)
 
-- [ ] **I1 — Verificaciones de cuenta** (solo lectura, con el CTO/CEO, sin
+- [x] **I1 — Verificaciones de cuenta** (solo lectura, con el CTO/CEO, sin
   crear nada). Complementa B1:
   - `aws lambda get-account-settings` → `ConcurrentExecutions`. Si es 10,
     elegir entre (a) pedir el aumento en Service Quotas y esperar, o (b)
@@ -784,7 +784,7 @@ en vivo con el CTO/CEO.
     DynamoDB tienen cuota gratis permanente) y el peor caso de
     CloudWatch del `plan.md` suma ~USD 1,30/mes, muy por debajo del tope
     de USD 20 (RNF-14).
-- [ ] **I2 — Bootstrap IAM y OIDC** (manual del CTO/CEO en consola/CLI,
+- [x] **I2 — Bootstrap IAM y OIDC** (manual del CTO/CEO en consola/CLI,
   con aprobación). `devops-agent` escribe `terraform/iam-bootstrap-policy.json`,
   gitignoreado igual que en la 0016. La policy va acotada al prefijo
   `renovarte-ordenes-*` en:
@@ -814,7 +814,7 @@ en vivo con el CTO/CEO.
   policy y configura un perfil local. Si hace falta, crea el OIDC provider
   de GitHub (`aud = sts.amazonaws.com`): es un singleton de la cuenta y no
   lo gestiona este repo (I-D10).
-- [ ] **I20 — Configuración del repo público en GitHub** (nueva; manual
+- [x] **I20 — Configuración del repo público en GitHub** (nueva; manual
   del CTO/CEO, USD 0, justo después de B2):
   - Ruleset sobre `main`: PR obligatorio, sin force push ni borrado, check
     requerido `gate` (y `terraform` cuando corra), mismo patrón que
