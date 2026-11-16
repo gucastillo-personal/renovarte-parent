@@ -829,7 +829,7 @@ en vivo con el CTO/CEO.
 
 #### Terraform
 
-- [ ] **I3 — Esqueleto `terraform/`:**
+- [x] **I3 — Esqueleto `terraform/`:**
   - `versions.tf` (`aws ~> 6.28` por `invoked_via_function_url`,
     `archive ~> 2.4`, Terraform **`>= 1.11`** por `value_wo`);
   - `providers.tf` (`us-east-1`, `default_tags Project=renovarte-ordenes`);
@@ -850,9 +850,9 @@ en vivo con el CTO/CEO.
   - Entradas de `.gitignore` como en la 0016, más `*.tfvars` salvo
     `.example` e `iam-bootstrap-policy.json`.
   - Depende de B2 (el repo existe).
-- [ ] **I4 — `dynamodb.tf`** (I-D5): tabla `-datos` on-demand, `pk` S, TTL
+- [x] **I4 — `dynamodb.tf`** (I-D5): tabla `-datos` on-demand, `pk` S, TTL
   `expira_en` y `deletion_protection_enabled = true`.
-- [ ] **I5 — `lambda.tf` + `logs.tf`** (I-D3, I-D4):
+- [x] **I5 — `lambda.tf` + `logs.tf`** (I-D3, I-D4):
   - `archive_file` de `dist/`;
   - log groups con retención de 14 días (`orders-http` y `budget-guard`);
   - `orders-http` y `budget-guard` `nodejs22.x` arm64, log format `Text`,
@@ -865,12 +865,12 @@ en vivo con el CTO/CEO.
     source_code_hash]` (solo `filename`/`source_code_hash` en los otros).
   - Para `plan`/`apply` depende de B2/B15/B16/B23 (`pnpm build`);
     `validate` no lo necesita.
-- [ ] **I6 — `function-url.tf`** (I-D1, I-D2):
+- [x] **I6 — `function-url.tf`** (I-D1, I-D2):
   - `aws_lambda_function_url` NONE/BUFFERED con el bloque `cors`;
   - 2 `aws_lambda_permission` (`InvokeFunctionUrl` +
     `InvokeFunction` con `invoked_via_function_url = true`);
   - output `orders_api_url`.
-- [ ] **I7 — `ses.tf` + `iam.tf` (roles de `orders-http` y
+- [x] **I7 — `ses.tf` + `iam.tf` (roles de `orders-http` y
   `budget-guard`)** (I-D5, I-D7, I-D9):
   - identidad de email SES v2 (opción A); los recursos de la opción B van
     con `count` según `sender_domain`;
@@ -881,13 +881,13 @@ en vivo con el CTO/CEO.
   - rol `budget-guard`: logs, DynamoDB `LeadingKeys=["CONTROL"]` y
     `*FunctionConcurrency` sobre `orders-http`.
   - Cubre AC-17 del lado de infra.
-- [ ] **I8 — `ssm.tf`** (I-D9): dos `aws_ssm_parameter` SecureString
+- [x] **I8 — `ssm.tf`** (I-D9): dos `aws_ssm_parameter` SecureString
   (`/renovarte-ordenes/hmac-secret` y
   `/renovarte-ordenes/discord-webhook-url`) con **`value_wo`**
   placeholder y `value_wo_version = 1` (no `value` + `ignore_changes`,
   que filtra el valor real al estado: N1). Los nombres salen como env
   vars `HMAC_SECRET_PARAM` y `DISCORD_WEBHOOK_PARAM`.
-- [ ] **I9 — `budget.tf` + `scheduler.tf`** (I-D6):
+- [x] **I9 — `budget.tf` + `scheduler.tf`** (I-D6):
   - budget COST de USD 20 con filtro por tag;
   - notificación del 80 % por email y del 100 % por SNS **y email**;
   - topic SNS del kill-switch con la policy para `budgets.amazonaws.com`
@@ -897,12 +897,12 @@ en vivo con el CTO/CEO.
     `lambda:InvokeFunction` sobre `budget-guard` (el Lambda
     `discord-retention` y su schedule diario se retiraron, I19).
   - Coordinar con B16 el formato del mensaje SNS del Budget.
-- [ ] **I10 — `alarm.tf`** (I-D8; aprobada por el CTO/CEO y aceptada por
+- [x] **I10 — `alarm.tf`** (I-D8; aprobada por el CTO/CEO y aceptada por
   backend): alarma `Invocations` Sum de 60 s > 300 sobre `orders-http`,
   con `alarm_actions` = [topic del kill-switch, topic de alertas
   operativas de I18] y sin `ok_actions`. Nombre desde `locals` (el mismo
   que `FLOOD_ALARM_NAME`). Coordinar con B16 el mensaje de ejemplo.
-- [ ] **I11 — `github-oidc.tf`** (I-D10):
+- [x] **I11 — `github-oidc.tf`** (I-D10):
   - rol `renovarte-ordenes-github-deploy-role`, con trust sobre
     `var.github_oidc_provider_arn`, `aud` y `sub` fijados a este repo y
     `refs/heads/main`;
@@ -911,7 +911,7 @@ en vivo con el CTO/CEO.
     `budget-guard`);
   - output del ARN del rol, que va como **variable** (no secreto) del
     repo en GitHub.
-- [ ] **I18 — `alerts.tf`: alertas operativas** (nueva; I-D13; reducida el
+- [x] **I18 — `alerts.tf`: alertas operativas** (nueva; I-D13; reducida el
   2026-10-05):
   - topic `renovarte-ordenes-alertas-operativas` sin KMS, policy con
     `SNS:Publish` solo para `cloudwatch.amazonaws.com` +
@@ -931,7 +931,7 @@ en vivo con el CTO/CEO.
 
 #### CI/CD
 
-- [ ] **I12 — Workflows** (I-D11, I-D10):
+- [x] **I12 — Workflows** (I-D11, I-D10):
   - `ci.yml`: `on: pull_request` (nunca `pull_request_target`),
     `permissions: { contents: read }`, gate + build; job de Terraform solo
     si cambió `terraform/**`; `concurrency` y `timeout-minutes`.
@@ -939,7 +939,7 @@ en vivo con el CTO/CEO.
     `permissions: { id-token: write, contents: read }`,
     `aws-actions/configure-aws-credentials` con `vars.AWS_DEPLOY_ROLE_ARN`,
     gate, build, zip, `update-function-code` + `wait function-updated` ×
-    **3**.
+    **2** (`orders-http` y `budget-guard`; `discord-retention` está retirada).
   - Extender `check:leak` (B17) con patrones de credenciales, IDs de
     cuenta de 12 dígitos en `README.md`/`docs/` y `*.tfvars`/`*.tfstate`
     trackeados.
@@ -948,7 +948,7 @@ en vivo con el CTO/CEO.
 
 #### Docs y validación
 
-- [ ] **I13 — README y runbook (infra):**
+- [x] **I13 — README y runbook (infra):**
   - README: "Terraform" (prerrequisito `pnpm build`, Terraform ≥ 1.11,
     pasos) y "Coordinación de valores" (tabla de `plan.md`) con
     placeholders: **sin** ID de cuenta, ARNs reales, URL del webhook ni
@@ -966,7 +966,7 @@ en vivo con el CTO/CEO.
     - cambiar la reserved concurrency (I-D4);
     - no hacer `apply` que toque concurrency con el kill-switch activo;
     - pasar a la opción B.
-- [ ] **I14 — `terraform fmt -check`, `terraform init -backend=false` y
+- [x] **I14 — `terraform fmt -check`, `terraform init -backend=false` y
   `terraform validate` en verde, más `pnpm gate` del repo.**
   - Output real en el PR.
   - `init` descarga providers: necesita aprobación humana, como en la
