@@ -974,7 +974,7 @@ en vivo con el CTO/CEO.
 
 #### Apply y cierre (en vivo, con el CTO/CEO)
 
-- [ ] **I15 — Primer apply**, con aprobación explícita del CTO/CEO, en
+- [x] **I15 — Primer apply**, con aprobación explícita del CTO/CEO, en
   este orden:
   1. `pnpm build`.
   2. `terraform plan` → revisar.
@@ -992,7 +992,7 @@ en vivo con el CTO/CEO.
   - Depende de B15–B17, B24 (canal y webhook creados), I1–I14, I18 e
     I20.
   - Desbloquea B19.
-- [ ] **I16 — Verificación post-apply** (sin gasto relevante):
+- [x] **I16 — Verificación post-apply** (sin gasto relevante):
   - `aws iam simulate-principal-policy` sobre el rol de `orders-http` con
     `ses:Recipients` = otro email → **denied**, y con el destinatario fijo
     → allowed (AC-17, capa IAM).
@@ -1010,6 +1010,8 @@ en vivo con el CTO/CEO.
   - Verificar la retención de 14 días en los 2 log groups.
   - **Al mes:** en Cost Explorer, confirmar si SES aparece con
     `Project=renovarte-ordenes` y documentar el resultado (I-D6).
+    _Pendiente al 2026-11-17: este punto es mensual y se hace
+    ≈ 2026-12-17; el resto de I16 está verificado._
 - [ ] **I17 — (Condicional: solo si B19 falla con la opción A) Opción
   B:**
   - el CTO/CEO compra el dominio;
