@@ -326,7 +326,7 @@ referencian); B21–B24 son nuevas, de esta revisión.
     - requisito si algún día se exporta a CSV/planilla: neutralizar los
       valores que empiecen con `=`, `+`, `-`, `@`, tab o CR (hoy no hay
       exportación).
-- [ ] **B19 — Smoke test real** (después del deploy de `## Infra` y de
+- [x] **B19 — Smoke test real** (después del deploy de `## Infra` y de
   B24, con aprobación humana):
   - Una orden de prueba contra el entorno real: mail en SES sandbox a
     renovartebyjuli@gmail.com **y** mensaje en el canal de Discord.
@@ -342,6 +342,17 @@ referencian); B21–B24 son nuevas, de esta revisión.
     recibida por email. Después restaurar el parámetro.
   - Si el mail cae en spam con el filtro puesto → escalar a la opción B
     (I17).
+  - **Resultado (2026-11-17/20):** dos órdenes reales (RA-87064, RA-38536):
+    mail por SES y mensaje en Discord con el mismo número; el reintento con
+    la misma key no duplicó; los logs salieron sin contacto ni webhook. El
+    mail cayó en spam sin filtro y llegó a la bandeja con el filtro de Gmail
+    "Nueva orden RA-" (deuda: el filtro es frágil; opción B = dominio
+    propio, I17, no se ejecutó).
+  - **No verificado, riesgo aceptado por el CTO/CEO (2026-11-20):** la falla
+    parcial real (webhook borrado → `aceptada` por mail + alerta
+    `canal_fallido`), la revisión de headers SPF/DKIM/DMARC y la prueba con
+    `@everyone` en el nombre. La ruta de `canal_fallido` tiene tests
+    automáticos y el filtro de la alarma se verificó en I16.
 - [ ] **B20 — Coordinación cross-repo:**
   - Pasar a `frontend-agent` la URL real y la versión final de `wire.ts`
     (1..100 líneas; `token_vencido` para < 3 s; `contacto.nombre`).
